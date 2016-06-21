@@ -43,7 +43,7 @@ LatticeStatsDataProviderBase<T>::~LatticeStatsDataProviderBase() {}
 
 template <class T>
 uInt LatticeStatsDataProviderBase<T>::getMaskStride() {
-	return 1;
+    return 1;
 }
 
 template <class T>
@@ -51,75 +51,75 @@ void LatticeStatsDataProviderBase<T>::finalize() {}
 
 template <class T>
 std::vector<std::pair<typename NumericTraits<T>::PrecisionType, typename NumericTraits<T>::PrecisionType> > LatticeStatsDataProviderBase<T>::getRanges() {
-	return _ranges;
+    return _ranges;
 }
 
 template <class T>
 uInt LatticeStatsDataProviderBase<T>::getStride() {
-	return 1;
+    return 1;
 }
 
 template <class T>
 const T* LatticeStatsDataProviderBase<T>::getWeights() {
-	return NULL;
+    return NULL;
 }
 
 template <class T>
 Bool LatticeStatsDataProviderBase<T>::hasRanges() const {
-	return _hasRanges;
+    return _hasRanges;
 }
 
 template <class T>
 Bool LatticeStatsDataProviderBase<T>::hasWeights() const {
-	return False;
+    return False;
 }
 
 template <class T>
 Bool LatticeStatsDataProviderBase<T>::isInclude() const {
-	return _isInclude;
+    return _isInclude;
 }
 
 template <class T>
 void LatticeStatsDataProviderBase<T>::minMaxPos(
-	IPosition& minPos, IPosition& maxPos) const {
-	minPos = _minPos;
-	maxPos = _maxPos;
+    IPosition& minPos, IPosition& maxPos) const {
+    minPos = _minPos;
+    maxPos = _maxPos;
 }
 
 template <class T>
 void LatticeStatsDataProviderBase<T>::reset() {
-	_minPos.resize(0);
-	_maxPos.resize(0);
+    _minPos.resize(0);
+    _maxPos.resize(0);
     /*
     if (! _progressMeter.null()) {
         cout << "reset progress" << endl;
         _progressMeter->init(_progressMeter->expectedNsteps());
-	}
+    }
     */
 }
 
 template <class T>
 void LatticeStatsDataProviderBase<T>::setProgressMeter(
-	CountedPtr<LattStatsProgress> pm
+    CountedPtr<LattStatsProgress> pm
 ) {
-	_progressMeter = pm;
+    _progressMeter = pm;
 }
 
 template <class T>
 void LatticeStatsDataProviderBase<T>::setRanges(
-	const std::vector<std::pair<typename NumericTraits<T>::PrecisionType, typename NumericTraits<T>::PrecisionType> >& ranges,
-	Bool isInclude
+    const std::vector<std::pair<typename NumericTraits<T>::PrecisionType, typename NumericTraits<T>::PrecisionType> >& ranges,
+    Bool isInclude
 ) {
-	_hasRanges = ! ranges.empty();
-	_ranges = ranges;
-	_isInclude = isInclude;
+    _hasRanges = ! ranges.empty();
+    _ranges = ranges;
+    _isInclude = isInclude;
 }
 
 template <class T>
 void LatticeStatsDataProviderBase<T>::_updateProgress() {
-	if (! _progressMeter.null()) {
-		(*_progressMeter)++;
-	}
+    if (! _progressMeter.null()) {
+        (*_progressMeter)++;
+    }
 }
 
 }
