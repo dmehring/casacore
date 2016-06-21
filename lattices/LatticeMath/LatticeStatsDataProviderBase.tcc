@@ -81,7 +81,8 @@ Bool LatticeStatsDataProviderBase<T>::isInclude() const {
 
 template <class T>
 void LatticeStatsDataProviderBase<T>::minMaxPos(
-    IPosition& minPos, IPosition& maxPos) const {
+    IPosition& minPos, IPosition& maxPos
+) const {
     minPos = _minPos;
     maxPos = _maxPos;
 }
