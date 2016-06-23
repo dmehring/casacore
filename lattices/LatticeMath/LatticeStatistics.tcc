@@ -865,13 +865,11 @@ void LatticeStatistics<T>::_doStatsLoop(
     T overallMin = 0;
     Bool isReal = casa::isReal(whatType(&currentMax));
     uInt nthreads = omp_get_max_threads();
-    Bool doMultiThread = _algConf.algorithm == StatisticsData::CLASSICAL
-        && nthreads > 1 && (
-            cursorShape.product()*sizeof(T)
-                > LatticeStatsDataProviderBase<T>::DEFAULT_CURSOR_SIZE_BYTES
-            || nsets > nthreads
-        );
-    if(doMultiThread) {
+    Bool mthreadSubLattChunks = _algConf.algorithm == StatisticsData::CLASSICAL
+        && nthreads > 1 && nsets == 1
+            && cursorShape.product()*sizeof(T)
+                > LatticeStatsDataProviderBase<T>::DEFAULT_CURSOR_SIZE_BYTES;
+    if(mthreadSubLattChunks) {
         LogIO os;
         if (haveLogger_p) {
             os = os_p;
@@ -879,7 +877,7 @@ void LatticeStatistics<T>::_doStatsLoop(
         os << LogIO::DEBUG1 << LogOrigin("LatticeStatistics", __func__)
             << "Computing basic stats using " << nthreads << " threads" << LogIO::POST;
     }
-    if (! doMultiThread) {
+    else {
         nthreads = 1;
     }
     vector<StatsAlg> sa = _createStatsAlgorithms(nthreads);
@@ -892,7 +890,7 @@ void LatticeStatistics<T>::_doStatsLoop(
         if (nsetsIsLarge) {
             progressMeter->init(nsets);
         }
-        else if (! doMultiThread){
+        else if (! mthreadSubLattChunks){
             lattDP[0].setProgressMeter(progressMeter);
             if (pInLattice_p->isMasked()) {
                 maskedLattDP[0].setProgressMeter(progressMeter);
@@ -928,7 +926,7 @@ void LatticeStatistics<T>::_doStatsLoop(
                 : 1;
             progressMeter->init(nsets*nSublatticeSteps);
         }
-        if (doMultiThread) {
+        if (mthreadSubLattChunks) {
             uInt maxSizeInBytes = subLat.size()*sizeof(T)/nthreads + 1;
             if (maxSizeInBytes > LatticeStatsDataProviderBase<T>::DEFAULT_CURSOR_SIZE_BYTES) {
                 maxSizeInBytes = LatticeStatsDataProviderBase<T>::DEFAULT_CURSOR_SIZE_BYTES;
@@ -1007,7 +1005,7 @@ void LatticeStatistics<T>::_doStatsLoop(
             // it has been.
             if (! fixedMinMax_p || noInclude_p) {
                 if (stepper.atStart()) {
-                    if (! doMultiThread) {
+                    if (! mthreadSubLattChunks) {
                         dataProvider[0]->minMaxPos(myMinPos, myMaxPos);
                     }
                     if (myMinPos.size() > 0) {
@@ -1022,7 +1020,7 @@ void LatticeStatistics<T>::_doStatsLoop(
                 else if (
                     currentMax > overallMax || currentMin < overallMin
                 ) {
-                    if (! doMultiThread) {
+                    if (! mthreadSubLattChunks) {
                         dataProvider[0]->minMaxPos(myMinPos, myMaxPos);
                     }
                     if (currentMin < overallMin) {
