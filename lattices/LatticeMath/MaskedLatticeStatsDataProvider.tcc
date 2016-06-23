@@ -135,7 +135,13 @@ const T* MaskedLatticeStatsDataProvider<T>::getData() {
 template <class T>
 const Bool* MaskedLatticeStatsDataProvider<T>::getMask() {
     if (! _iter.null()) {
-        _currentMaskSlice.assign(_iter->getMask());
+        // necessary in multithreaded environment when
+        // multiple data providers are accessing the
+        // same lattice
+#pragma omp critical(lsdp_latticereadlock)
+        {
+            _currentMaskSlice.assign(_iter->getMask());
+        }
     }
     _currentMaskPtr = _currentMaskSlice.getStorage(_delMask);
     return _currentMaskPtr;
