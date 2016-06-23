@@ -800,7 +800,13 @@ Bool LatticeStatistics<T>::generateStorageLattice() {
     if (_algConf.algorithm == StatisticsData::CLASSICAL) {
         uInt nel = pInLattice_p->size()/nsets;
         timeOld = nsets*(_aOld + _bOld*nel);
-        timeNew = nsets*(_aNew + _bNew*nel);
+        // the 3.0 is a fudge factor to account for the fact that the
+        // speed up usually increases more slowly than the number of threads
+        Int multithreadSpeedUp = omp_get_max_threads()/3;
+        if (multithreadSpeedUp <= 0) {
+            multithreadSpeedUp = 1;
+        }
+        timeNew = nsets*(_aNew + _bNew*nel)/multithreadSpeedUp;
     }
     //Timer timer;
     if (
@@ -857,22 +863,39 @@ void LatticeStatistics<T>::_doStatsLoop(
     T currentMin = 0;
     T overallMax = 0;
     T overallMin = 0;
-    Bool isReal = whatType(&currentMax);
-
-    CountedPtr<StatisticsAlgorithm<AccumType, const T*, const Bool*> > sa = _createStatsAlgorithm();
-    LatticeStatsDataProvider<T> lattDP;
-    MaskedLatticeStatsDataProvider<T> maskedLattDP;
-    LatticeStatsDataProviderBase<T> *dataProvider;
+    Bool isReal = casa::isReal(whatType(&currentMax));
+    uInt nthreads = omp_get_max_threads();
+    Bool doMultiThread = _algConf.algorithm == StatisticsData::CLASSICAL
+        && nthreads > 1 && (
+            cursorShape.product()*sizeof(T)
+                > LatticeStatsDataProviderBase<T>::DEFAULT_CURSOR_SIZE_BYTES
+            || nsets > nthreads
+        );
+    if(doMultiThread) {
+        LogIO os;
+        if (haveLogger_p) {
+            os = os_p;
+        }
+        os << LogIO::DEBUG1 << LogOrigin("LatticeStatistics", __func__)
+            << "Computing basic stats using " << nthreads << " threads" << LogIO::POST;
+    }
+    if (! doMultiThread) {
+        nthreads = 1;
+    }
+    vector<StatsAlg> sa = _createStatsAlgorithms(nthreads);
+    vector<LatticeStatsDataProvider<T> > lattDP(nthreads);
+    vector<MaskedLatticeStatsDataProvider<T> > maskedLattDP(nthreads);
+    vector<LatticeStatsDataProviderBase<T> *> dataProvider(nthreads);
     _configureDataProviders(lattDP, maskedLattDP);
     Bool nsetsIsLarge = nsets > 50;
     if (! progressMeter.null()) {
         if (nsetsIsLarge) {
             progressMeter->init(nsets);
         }
-        else {
-            lattDP.setProgressMeter(progressMeter);
+        else if (! doMultiThread){
+            lattDP[0].setProgressMeter(progressMeter);
             if (pInLattice_p->isMasked()) {
-                maskedLattDP.setProgressMeter(progressMeter);
+                maskedLattDP[0].setProgressMeter(progressMeter);
             }
         }
     }
@@ -882,6 +905,7 @@ void LatticeStatistics<T>::_doStatsLoop(
     Slicer slicer(stepper.position(), stepper.endPosition(), Slicer::endIsLast);
     SubLattice<T> subLat(*pInLattice_p, slicer);
     StatsData<AccumType> stats;
+    IPosition myMaxPos, myMinPos;
     for (stepper.reset(); ! stepper.atEnd(); stepper++) {
         curPos = stepper.position();
         posMax = locInStorageLattice(curPos, LatticeStatsBase::MAX);
@@ -904,20 +928,49 @@ void LatticeStatistics<T>::_doStatsLoop(
                 : 1;
             progressMeter->init(nsets*nSublatticeSteps);
         }
-        if(subLat.isMasked()) {
-            maskedLattDP.setLattice(subLat);
-            dataProvider = &maskedLattDP;
+        if (doMultiThread) {
+            uInt maxSizeInBytes = subLat.size()*sizeof(T)/nthreads + 1;
+            if (maxSizeInBytes > LatticeStatsDataProviderBase<T>::DEFAULT_CURSOR_SIZE_BYTES) {
+                maxSizeInBytes = LatticeStatsDataProviderBase<T>::DEFAULT_CURSOR_SIZE_BYTES;
+            }
+            for (uInt i=0; i<nthreads; ++i) {
+                if(subLat.isMasked()) {
+                    maskedLattDP[i].setLattice(subLat, maxSizeInBytes);
+                    dataProvider[i] = &maskedLattDP[i];
+                }
+                else {
+                    lattDP[i].setLattice(subLat, maxSizeInBytes);
+                    dataProvider[i] = &lattDP[i];
+                }
+                // initialize each data provider to point to a different
+                // position in the lattice. These positions are staggered so
+                // that each pixel will be touched exactly once across
+                // all data providers.
+                dataProvider[i]->setInitialOffset(i);
+                // set all data providers to advance the same number of steps,
+                // ensuring each covers a different part of the lattice than all
+                // the others
+                dataProvider[i]->setIncrementSteps(nthreads);
+                sa[i]->setDataProvider(dataProvider[i]);
+            }
+            stats = _doThreading(myMinPos, myMaxPos, sa, dataProvider, nthreads);
         }
         else {
-            lattDP.setLattice(subLat);
-            dataProvider = &lattDP;
+            if(subLat.isMasked()) {
+                maskedLattDP[0].setLattice(subLat);
+                dataProvider[0] = &maskedLattDP[0];
+            }
+            else {
+                lattDP[0].setLattice(subLat);
+                dataProvider[0] = &lattDP[0];
+            }
+            sa[0]->setDataProvider(dataProvider[0]);
+            stats = sa[0]->getStatistics();
         }
-        sa->setDataProvider(dataProvider);
-        stats = sa->getStatistics();
         if (_algConf.algorithm == StatisticsData::CHAUVENETCRITERION) {
             ChauvenetCriterionStatistics<AccumType, const T*, const Bool*> *ch
                 = dynamic_cast<ChauvenetCriterionStatistics<AccumType, const T*, const Bool*> *>(
-                    &*sa
+                    sa[0].get()
                 );
             ostringstream os;
             os << curPos;
@@ -954,8 +1007,9 @@ void LatticeStatistics<T>::_doStatsLoop(
             // it has been.
             if (! fixedMinMax_p || noInclude_p) {
                 if (stepper.atStart()) {
-                    IPosition myMaxPos, myMinPos;
-                    dataProvider->minMaxPos(myMinPos, myMaxPos);
+                    if (! doMultiThread) {
+                        dataProvider[0]->minMaxPos(myMinPos, myMaxPos);
+                    }
                     if (myMinPos.size() > 0) {
                         minPos_p = subLat.positionInParent(myMinPos);
                     }
@@ -968,8 +1022,9 @@ void LatticeStatistics<T>::_doStatsLoop(
                 else if (
                     currentMax > overallMax || currentMin < overallMin
                 ) {
-                    IPosition myMaxPos, myMinPos;
-                    dataProvider->minMaxPos(myMinPos, myMaxPos);
+                    if (! doMultiThread) {
+                        dataProvider[0]->minMaxPos(myMinPos, myMaxPos);
+                    }
                     if (currentMin < overallMin) {
                         if (myMinPos.size() > 0) {
                             minPos_p = subLat.positionInParent(myMinPos);
@@ -989,6 +1044,71 @@ void LatticeStatistics<T>::_doStatsLoop(
             (*progressMeter)++;
         }
     }
+}
+
+template <class T>
+StatsData<typename LatticeStatistics<T>::AccumType> LatticeStatistics<T>::_doThreading(
+    IPosition& myMinPos, IPosition& myMaxPos, vector<StatsAlg>& vsa,
+    vector<LatticeStatsDataProviderBase<T> *>& vDataProvider,
+    uInt nthreads
+) const {
+    vector<StatsData<AccumType> > vstats(nthreads);
+#pragma omp parallel for
+    for (uInt i=0; i<nthreads; ++i) {
+        vstats[i] = vsa[i]->getStatistics();
+    }
+    StatsData<AccumType> stats;
+    stats.masked = False;
+    stats.max.reset();
+    stats.min.reset();
+    stats.npts = 0;
+    stats.nvariance = 0;
+    stats.mean = 0;
+    stats.sum = 0;
+    stats.sumsq = 0;
+    stats.sumweights = 0;
+    stats.variance = 0;
+    stats.weighted = False;
+    for (uInt i=0; i<nthreads; ++i) {
+        // collate results
+        stats.masked = stats.masked || vstats[i].masked;
+        stats.weighted = stats.weighted || vstats[i].weighted;
+        if (vstats[i].npts > 0) {
+            if (
+                vstats[i].max
+                && (
+                    ! stats.max || (stats.max && *(vstats[i].max) > *(stats.max))
+                )
+            ) {
+                stats.max = vstats[i].max;
+                IPosition tmpMin;
+                vDataProvider[i]->minMaxPos(tmpMin, myMaxPos);
+            }
+            if (
+                vstats[i].min
+                && (
+                    ! stats.min || (stats.min && *(vstats[i].min) < *(stats.min))
+                )
+            ) {
+                stats.min = vstats[i].min;
+                IPosition tmpMax;
+                vDataProvider[i]->minMaxPos(myMinPos, tmpMax);
+            }
+            // compute the mean before accumulating sum and npts
+            stats.mean = (stats.sum + vstats[i].sum)/(stats.npts + vstats[i].npts);
+            stats.npts += vstats[i].npts;
+            stats.sum += vstats[i].sum;
+            stats.sumsq += vstats[i].sumsq;
+            stats.sumweights += vstats[i].sumweights;
+            stats.nvariance += vstats[i].nvariance;
+        }
+    }
+    AccumType one = 1;
+    stats.variance = stats.sumweights > one
+        ? stats.nvariance/(stats.sumweights - one) : 0;
+    stats.rms = sqrt(stats.sumsq/stats.sumweights);
+    stats.stddev = sqrt(stats.variance);
+    return stats;
 }
 
 template <class T>
@@ -1104,34 +1224,56 @@ void LatticeStatistics<T>::generateRobust () {
 }
 
 template <class T>
-CountedPtr<StatisticsAlgorithm<typename LatticeStatistics<T>::AccumType, const T*, const Bool*> >
-LatticeStatistics<T>::_createStatsAlgorithm() const {
-    CountedPtr<StatisticsAlgorithm<AccumType, const T*, const Bool*> > sa;
-    switch (_algConf.algorithm) {
-    case StatisticsData::CLASSICAL:
-        sa = new ClassicalStatistics<AccumType, const T*, const Bool*>();
-        return sa;
-    case StatisticsData::HINGESFENCES: {
-        sa = new HingesFencesStatistics<AccumType, const T*, const Bool*>(_algConf.hf);
-        return sa;
-    }
-    case StatisticsData::FITTOHALF: {
-        sa = new FitToHalfStatistics<AccumType, const T*, const Bool*>(
-            _algConf.ct, _algConf.ud, _algConf.cv
-        );
-        return sa;
-    }
-    case StatisticsData::CHAUVENETCRITERION: {
-        sa = new ChauvenetCriterionStatistics<AccumType, const T*, const Bool*>(
-            _algConf.zs, _algConf.mi
-        );
-        return sa;
-    }
-    default:
-        ThrowCc(
-            "Logic Error: Unhandled algorithm "
+vector<typename LatticeStatistics<T>::StatsAlg> LatticeStatistics<T>::_createStatsAlgorithms(uInt n) const {
+    vector<StatsAlg> v(n);
+    for (uInt i=0; i<n; ++i) {
+        StatsAlg sa;
+        switch (_algConf.algorithm) {
+        case StatisticsData::CLASSICAL:
+            sa = new ClassicalStatistics<AccumType, const T*, const Bool*>();
+            break;
+        case StatisticsData::HINGESFENCES: {
+            sa = new HingesFencesStatistics<AccumType, const T*, const Bool*>(_algConf.hf);
+            break;
+        }
+        case StatisticsData::FITTOHALF: {
+            sa = new FitToHalfStatistics<AccumType, const T*, const Bool*>(
+                _algConf.ct, _algConf.ud, _algConf.cv
+            );
+            break;
+        }
+        case StatisticsData::CHAUVENETCRITERION: {
+            sa = new ChauvenetCriterionStatistics<AccumType, const T*, const Bool*>(
+                _algConf.zs, _algConf.mi
+            );
+            break;
+        }
+        default:
+            ThrowCc(
+                "Logic Error: Unhandled algorithm "
                 + String::toString(_algConf.algorithm)
-        );
+            );
+        }
+        v[i] = sa;
+    }
+    return v;
+}
+
+template <class T>
+typename LatticeStatistics<T>::StatsAlg LatticeStatistics<T>::_createStatsAlgorithm() const {
+    return _createStatsAlgorithms(1)[0];
+}
+
+template <class T>
+void LatticeStatistics<T>::_configureDataProviders(
+    vector<LatticeStatsDataProvider<T> >& lattDP,
+    vector<MaskedLatticeStatsDataProvider<T> >& maskedLattDP
+) const {
+    typename vector<LatticeStatsDataProvider<T> >::iterator iter = lattDP.begin();
+    typename vector<LatticeStatsDataProvider<T> >::iterator end = lattDP.end();
+    typename vector<MaskedLatticeStatsDataProvider<T> >::iterator miter = maskedLattDP.begin();
+    for (; iter!=end; ++iter, ++miter) {
+        _configureDataProviders(*iter, *miter);
     }
 }
 
@@ -1151,7 +1293,6 @@ void LatticeStatistics<T>::_configureDataProviders(
         }
     }
 }
-
 
 template <class T>
 void LatticeStatistics<T>::listMinMax(ostringstream& osMin,

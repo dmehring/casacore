@@ -46,7 +46,7 @@ template <class T> class LatticeStatsDataProviderBase
 
 public:
 
-    //typedef typename NumericTraits<T>::PrecisionType AccumType;
+    static const uInt DEFAULT_CURSOR_SIZE_BYTES;
 
     virtual ~LatticeStatsDataProviderBase();
 
@@ -77,10 +77,22 @@ public:
     // exclude (return False) ranges?
     Bool isInclude() const;
 
+    // is the underlying iterator null?
+    virtual Bool isIterNull() const = 0;
+
     // get the positions of the min and max
     void minMaxPos(IPosition& minpos, IPosition& maxpos) const;
 
     virtual void reset();
+
+    // every time the data provider is incremented (++), this indicates
+    // the number of steps to advance the underlying iterator. Normally,
+    // this is only needed for multi-threading.
+    virtual void setIncrementSteps(uInt n) = 0;
+
+    // on a reset() call, the underlying iterator will be reset then advanced
+    // n steps. This is normally only needed for multi-threading.
+    virtual void setInitialOffset(uInt n) = 0;
 
     void setProgressMeter(CountedPtr<LattStatsProgress> pm);
 

@@ -59,7 +59,8 @@ public:
     // to create a single object before the loop and use setLattice() to update
     // its lattice).
     MaskedLatticeStatsDataProvider(
-        MaskedLattice<T>& lattice, uInt iteratorLimitBytes=4096*4096
+        MaskedLattice<T>& lattice,
+        uInt iteratorLimitBytes=LatticeStatsDataProviderBase<T>::DEFAULT_CURSOR_SIZE_BYTES
     );
 
     ~MaskedLatticeStatsDataProvider();
@@ -89,8 +90,20 @@ public:
     // Does the current data set have an associated mask?
     Bool hasMask() const;
 
+    // is the underlying iterator null?
+    Bool isIterNull() const { return _iter.null(); }
+
     // reset the provider to point to the first data set it manages.
     void reset();
+
+    // every time the data provider is incremented (++), this indicates
+    // the number of steps to advance the underlying iterator. Normally,
+    // this is only needed for multi-threading.
+    void setIncrementSteps(uInt n) { _nsteps = n; }
+
+    // on a reset() call, the underlying iterator will be reset then advanced
+    // n steps. This is normally only needed for multi-threading.
+    void setInitialOffset(uInt n) { _initialOffset = n; }
 
     // set the lattice. Automatically resets the lattice iterator.
     // <src>iteratorLimitBytes</src> is related to the size of the lattice.
@@ -104,7 +117,10 @@ public:
     // MaskedLatticeStatsDataProvider each loop (in that case, you probably will want
     // to create a single object before the loop and use setLattice() to update
     // its lattice).
-    void setLattice(const MaskedLattice<T>& lattice, uInt iteratorLimitBytes=4096*4096);
+    void setLattice(
+        const MaskedLattice<T>& lattice,
+        uInt iteratorLimitBytes=LatticeStatsDataProviderBase<T>::DEFAULT_CURSOR_SIZE_BYTES
+    );
 
     // <group>
     // see base class documentation.
@@ -121,8 +137,11 @@ private:
     const T* _currentPtr;
     const Bool* _currentMaskPtr;
     Bool _delData, _delMask, _atEnd;
+    uInt _initialOffset, _nsteps;
 
     void _freeStorage();
+
+    void _increment(uInt n);
 
 };
 

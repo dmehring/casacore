@@ -53,6 +53,7 @@ namespace casacore { //# NAMESPACE CASACORE - BEGIN
 
 //# Forward Declarations
 template <class T> class MaskedLattice;
+template <class T> class SubLattice;
 template <class T> class TempLattice;
 class IPosition;
 
@@ -198,8 +199,11 @@ template <class T> class LatticeStatistics : public LatticeStatsBase
 
 public:
 
-
     typedef typename NumericTraits<T>::PrecisionType AccumType;
+
+    typedef CountedPtr<
+        StatisticsAlgorithm<AccumType, const T*, const Bool*>
+    > StatsAlg;
 
     struct AlgConf {
         StatisticsData::ALGORITHM algorithm;
@@ -571,14 +575,27 @@ private:
 // Stretch min and max by 5%
    void stretchMinMax (AccumType& dMin, AccumType& dMax) const;
 
-   CountedPtr<StatisticsAlgorithm<AccumType, const T*, const Bool*> > _createStatsAlgorithm() const;
+   StatsAlg _createStatsAlgorithm() const;
+
+   vector<StatsAlg> _createStatsAlgorithms(uInt n) const;
 
    void _configureDataProviders(
            LatticeStatsDataProvider<T>& lattDP,
            MaskedLatticeStatsDataProvider<T>& maskedLattDP
     ) const;
 
+   void _configureDataProviders(
+       vector<LatticeStatsDataProvider<T> >& lattDP,
+       vector<MaskedLatticeStatsDataProvider<T> >& maskedLattDP
+   ) const;
+
    void _doStatsLoop(uInt nsets, CountedPtr<LattStatsProgress> progressMeter);
+
+   StatsData<AccumType> _doThreading(
+       IPosition& myMinPos, IPosition& myMaxPos, vector<StatsAlg>& sa,
+       vector<LatticeStatsDataProviderBase<T> *>& dataProvider,
+       uInt nthreads
+   ) const;
 };
 
 } //# NAMESPACE CASA - END

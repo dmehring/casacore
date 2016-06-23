@@ -35,14 +35,16 @@ template <class T>
 MaskedLatticeStatsDataProvider<T>::MaskedLatticeStatsDataProvider()
     : LatticeStatsDataProviderBase<T>(),
     _iter(), /* _ary(), _mask(), */ _currentSlice(), _currentMaskSlice(),
-    _currentPtr(0), _currentMaskPtr(0), _delData(False), _delMask(False), _atEnd(False) {}
+    _currentPtr(0), _currentMaskPtr(0), _delData(False), _delMask(False),
+    _atEnd(False), _initialOffset(0), _nsteps(0) {}
 
 template <class T>
 MaskedLatticeStatsDataProvider<T>::MaskedLatticeStatsDataProvider(
     MaskedLattice<T>& lattice, uInt
 ) : LatticeStatsDataProviderBase<T>(),
     _iter(), _currentSlice(), _currentMaskSlice(),
-    _currentPtr(0), _currentMaskPtr(0), _delData(False), _delMask(False) {
+    _currentPtr(0), _currentMaskPtr(0), _delData(False), _delMask(False),
+    _atEnd(False), _initialOffset(0), _nsteps(0) {
     setLattice(lattice);
 }
 
@@ -51,14 +53,23 @@ MaskedLatticeStatsDataProvider<T>::~MaskedLatticeStatsDataProvider() {}
 
 template <class T>
 void MaskedLatticeStatsDataProvider<T>::operator++() {
+    _increment(_nsteps);
+    this->_updateProgress();
+}
+
+template <class T>
+void MaskedLatticeStatsDataProvider<T>::_increment(uInt n) {
     _freeStorage();
     if (_iter.null()) {
         _atEnd = True;
     }
     else {
-        ++(*_iter);
+        for (uInt i=0; i<n; ++i) {
+            if(! (++(*_iter))) {
+                break;
+            }
+        }
     }
-    this->_updateProgress();
 }
 
 template <class T>
@@ -84,7 +95,6 @@ template <class T>
 Bool MaskedLatticeStatsDataProvider<T>::atEnd() const {
     if (_iter.null()) {
         return _atEnd;
-
     }
     else {
         return _iter->atEnd();
@@ -110,7 +120,13 @@ uInt64 MaskedLatticeStatsDataProvider<T>::getCount() {
 template <class T>
 const T* MaskedLatticeStatsDataProvider<T>::getData() {
     if (! _iter.null()) {
-        _currentSlice.assign(_iter->cursor());
+        // necessary in multithreaded environment when
+        // multiple data providers are accessing the
+        // same lattice
+#pragma omp critical(lsdp_latticereadlock)
+        {
+            _currentSlice.assign(_iter->cursor());
+        }
     }
     _currentPtr = _currentSlice.getStorage(_delData);
     return _currentPtr;
@@ -135,6 +151,9 @@ void MaskedLatticeStatsDataProvider<T>::reset() {
     LatticeStatsDataProviderBase<T>::reset();
     if (! _iter.null()) {
         _iter->reset();
+        if (_initialOffset > 0) {
+            _increment(_initialOffset);
+        }
     }
 }
 
@@ -145,9 +164,7 @@ void MaskedLatticeStatsDataProvider<T>::setLattice(
     finalize();
     if (lattice.size() > iteratorLimitBytes/sizeof(T)) {
         TileStepper stepper(
-            lattice.shape(), lattice.niceCursorShape(
-                lattice.advisedMaxPixels()
-            )
+            lattice.shape(), lattice.niceCursorShape()
         );
         _iter = new RO_MaskedLatticeIterator<T>(lattice, stepper);
     }

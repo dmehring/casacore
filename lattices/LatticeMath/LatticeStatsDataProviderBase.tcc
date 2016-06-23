@@ -34,6 +34,9 @@
 namespace casacore {
 
 template <class T>
+const uInt LatticeStatsDataProviderBase<T>::DEFAULT_CURSOR_SIZE_BYTES = 4096*4096;
+
+template <class T>
 LatticeStatsDataProviderBase<T>::LatticeStatsDataProviderBase()
 : _hasRanges(False), _isInclude(True), _ranges(),
   _progressMeter(NULL), _minPos(), _maxPos() {}

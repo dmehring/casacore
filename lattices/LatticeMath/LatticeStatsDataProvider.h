@@ -57,7 +57,8 @@ public:
     // to create a single object before the loop and use setLattice() to update
     // its lattice).
     LatticeStatsDataProvider(
-        const Lattice<T>& lattice, uInt iteratorLimitBytes=4096*4096
+        const Lattice<T>& lattice,
+        uInt iteratorLimitBytes=LatticeStatsDataProviderBase<T>::DEFAULT_CURSOR_SIZE_BYTES
     );
 
     ~LatticeStatsDataProvider();
@@ -88,8 +89,20 @@ public:
     // Does the current data set have an associated mask?
     Bool hasMask() const;
 
+    // is the underlying iterator null?
+    Bool isIterNull() const { return _iter.null(); }
+
     // reset the provider to point to the first data set it manages.
     void reset();
+
+    // every time the data provider is incremented (++), this indicates
+    // the number of steps to advance the underlying iterator. Normally,
+    // this is only needed for multi-threading.
+    void setIncrementSteps(uInt n) { _nsteps = n; }
+
+    // on a reset() call, the underlying iterator will be reset then advanced
+    // n steps. This is normally only needed for multi-threading.
+    void setInitialOffset(uInt n) { _initialOffset = n; }
 
     // set the lattice. Automatically resets the lattice iterator
     // <src>iteratorLimitBytes</src> is related to the size of the lattice.
@@ -97,14 +110,15 @@ public:
     // be used to step through the lattice. If less, then all the data in the
     // values in the lattice are retrieved in a single chunk. The advantage of
     // the iterator is that less memory is used. The disadvantage is there is
-    // a significant performace cost, so if the lattice is small, it is better to
-    // get all its values in a single chunk and forgo the iterator. This is particularly
+    // a significant performance cost, so if the lattice is small, it is better to
+    // get all its values in a single chunk and forego the iterator. This is particularly
     // true when looping for a large number of iterations and creating a
     // LatticeStatsDataProvider each loop (in that case, you probably will want
     // to create a single object before the loop and use setLattice() to update
     // its lattice).
     void setLattice(
-        const Lattice<T>& lattice, uInt iteratorLimitBytes=4096*4096
+        const Lattice<T>& lattice,
+        uInt iteratorLimitBytes=LatticeStatsDataProviderBase<T>::DEFAULT_CURSOR_SIZE_BYTES
     );
 
     // <group>
@@ -119,8 +133,11 @@ private:
     Array<T> _currentSlice;
     const T* _currentPtr;
     Bool _delData, _atEnd;
+    uInt _initialOffset, _nsteps;
 
     void _freeStorage();
+
+    void _increment(uInt n);
 
 };
 

@@ -35,14 +35,16 @@ template <class T>
 LatticeStatsDataProvider<T>::LatticeStatsDataProvider()
     : LatticeStatsDataProviderBase<T>(),
     _iter(), _currentSlice(),
-    _currentPtr(0), _delData(False), _atEnd(False) {}
+    _currentPtr(0), _delData(False), _atEnd(False),
+    _initialOffset(0), _nsteps(1) {}
 
 template <class T>
 LatticeStatsDataProvider<T>::LatticeStatsDataProvider(
     const Lattice<T>& lattice, uInt iteratorLimitBytes
 ) : LatticeStatsDataProviderBase<T>(),
     _iter(), _currentSlice(),
-    _currentPtr(0), _delData(False), _atEnd(False) {
+    _currentPtr(0), _delData(False), _atEnd(False),
+    _initialOffset(0), _nsteps(1) {
     setLattice(lattice, iteratorLimitBytes);
 }
 
@@ -51,14 +53,23 @@ LatticeStatsDataProvider<T>::~LatticeStatsDataProvider() {}
 
 template <class T>
 void LatticeStatsDataProvider<T>::operator++() {
+    _increment(_nsteps);
+    this->_updateProgress();
+}
+
+template <class T>
+void LatticeStatsDataProvider<T>::_increment(uInt n) {
     _freeStorage();
     if (_iter.null()) {
         _atEnd = True;
     }
     else {
-        ++(*_iter);
+        for (uInt i=0; i<n; ++i) {
+            if(! (++(*_iter))) {
+                break;
+            }
+        }
     }
-    this->_updateProgress();
 }
 
 template <class T>
@@ -105,7 +116,13 @@ uInt64 LatticeStatsDataProvider<T>::getCount() {
 template <class T>
 const T* LatticeStatsDataProvider<T>::getData() {
     if (! _iter.null()) {
-        _currentSlice.assign(_iter->cursor());
+        // necessary in multithreaded environment when
+        // multiple data providers are accessing the
+        // same lattice
+#pragma omp critical(lsdp_latticereadlock)
+        {
+            _currentSlice.assign(_iter->cursor());
+        }
     }
     _currentPtr = _currentSlice.getStorage(_delData);
     return _currentPtr;
@@ -126,6 +143,9 @@ void LatticeStatsDataProvider<T>::reset() {
     LatticeStatsDataProviderBase<T>::reset();
     if (! _iter.null()) {
         _iter->reset();
+        if (_initialOffset > 0) {
+            _increment(_initialOffset);
+        }
     }
 }
 
@@ -136,9 +156,7 @@ void LatticeStatsDataProvider<T>::setLattice(
     finalize();
     if (lattice.size() > iteratorLimitBytes/sizeof(T)) {
         TileStepper stepper(
-            lattice.shape(), lattice.niceCursorShape(
-                lattice.advisedMaxPixels()
-            )
+            lattice.shape(), lattice.niceCursorShape()
         );
         _iter = new RO_LatticeIterator<T>(lattice, stepper);
     }
