@@ -29,11 +29,7 @@
 
 #include <casacore/casa/aips.h>
 
-#include <casacore/scimath/Mathematics/ConstrainedRangeStatistics.h>
-
-#include <set>
-#include <vector>
-#include <utility>
+#include <casacore/scimath/Mathematics/IterativeRangeStatistics.h>
 
 namespace casacore {
 
@@ -46,7 +42,7 @@ namespace casacore {
 
 template <class AccumType, class DataIterator, class MaskIterator=const Bool*, class WeightsIterator=DataIterator>
 class ChauvenetCriterionStatistics
-    : public ConstrainedRangeStatistics<CASA_STATP> {
+    : public IterativeRangeStatistics<CASA_STATP> {
 public:
 
     // If <src>zscore</src> is not negative, use that value to discard outliers beyond
@@ -69,26 +65,14 @@ public:
         return StatisticsData::CHAUVENETCRITERION;
     };
 
-    // reset object to initial state. Clears all private fields including data,
-    // accumulators, global range. It does not affect the fence factor (_f), which was
-    // set at object construction.
-    virtual void reset();
+protected:
 
-    // This class does not allow statistics to be calculated as datasets are added, so
-    // an exception will be thrown if <src>c</src> is True.
-    void setCalculateAsAdded(Bool c);
-
-    // get the number of iterations
-    uInt getNiter() const { return _niter; }
+    CountedPtr<std::pair<AccumType, AccumType> > _setNewRange(const StatsData<AccumType>& sd);
 
 private:
 
     Double _zscore;
-    Int _maxIterations;
-    Bool _rangeIsSet;
-    uInt _niter;
 
-    void _setRange();
 };
 
 }

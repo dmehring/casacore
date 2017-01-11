@@ -29,8 +29,6 @@
 
 #include <casacore/scimath/Mathematics/ChauvenetCriterionStatistics.h>
 
-#include <casacore/scimath/Mathematics/StatisticsIncrementer.h>
-#include <casacore/scimath/Mathematics/StatisticsUtilities.h>
 #include <casacore/scimath/Mathematics/ZScoreCalculator.h>
 
 namespace casacore {
@@ -39,8 +37,8 @@ CASA_STATD
 ChauvenetCriterionStatistics<CASA_STATP>::ChauvenetCriterionStatistics(
     Double zscore, Int maxIterations
 )
-  : ConstrainedRangeStatistics<CASA_STATP>(),
-    _zscore(zscore), _maxIterations(maxIterations), _rangeIsSet(False), _niter(0) {}
+  : IterativeRangeStatistics<CASA_STATP>(maxIterations),
+    _zscore(zscore) {}
 
 CASA_STATD
 ChauvenetCriterionStatistics<CASA_STATP>::~ChauvenetCriterionStatistics() {}
@@ -53,59 +51,19 @@ ChauvenetCriterionStatistics<CASA_STATP>::operator=(
     if (this == &other) {
         return *this;
     }
-    ClassicalStatistics<CASA_STATP>::operator=(other);
+    IterativeRangeStatistics<CASA_STATP>::operator=(other);
     _zscore = other._zscore;
-    _maxIterations = other._maxIterations;
-    _niter = other._niter;
     return *this;
 }
 
 CASA_STATD
-void ChauvenetCriterionStatistics<CASA_STATP>::reset() {
-    ConstrainedRangeStatistics<CASA_STATP>::reset();
-    _rangeIsSet = False;
-}
-
-CASA_STATD
-void ChauvenetCriterionStatistics<CASA_STATP>::setCalculateAsAdded(
-    Bool c
+CountedPtr<std::pair<AccumType, AccumType> > ChauvenetCriterionStatistics<CASA_STATP>::_setNewRange(
+    const StatsData<AccumType>& sd
 ) {
-    ThrowIf(
-        c, "ChauvenetCriterionStatistics does not support calculating statistics "
-        "incrementally as data sets are added"
+    Double zScore = _zscore >= 0 ? _zscore : ZScoreCalculator::getMaxZScore((uInt64)sd.npts);
+    return new std::pair<AccumType, AccumType>(
+        sd.mean - zScore*sd.stddev, sd.mean + zScore*sd.stddev
     );
-}
-
-CASA_STATD
-void ChauvenetCriterionStatistics<CASA_STATP>::_setRange() {
-    if (_rangeIsSet) {
-        return;
-    }
-    uInt maxI = _maxIterations >= 0 ? _maxIterations : 1000;
-    uInt prevNpts = 0;
-    StatsData<AccumType> sd;
-    while (_niter <= maxI) {
-        if (_niter == 0) {
-            ClassicalStatistics<CASA_STATP> cs(*this);
-            sd = cs.getStatistics();
-        }
-        else {
-            sd = this->getStatistics();
-            if ((uInt64)sd.npts == prevNpts) {
-                break;
-            }
-        }
-        Double zScore = _zscore >= 0 ? _zscore : ZScoreCalculator::getMaxZScore((uInt64)sd.npts);
-        CountedPtr<std::pair<AccumType, AccumType> > range = new std::pair<AccumType, AccumType>(
-            sd.mean - zScore*sd.stddev, sd.mean + zScore*sd.stddev
-        );
-        ConstrainedRangeStatistics<CASA_STATP>::_setRange(range);
-        // _rangeIsSet is set here to prevent infinite recursion on next loop iteration
-        _rangeIsSet = True;
-        prevNpts = (uInt64)sd.npts;
-        ++_niter;
-    }
-    --_niter;
 }
 
 }
