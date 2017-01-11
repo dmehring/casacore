@@ -50,7 +50,8 @@ public:
         CHAUVENETCRITERION,
         CLASSICAL,
         FITTOHALF,
-        HINGESFENCES
+        HINGESFENCES,
+        RMSD
     };
 
     enum STATS {

@@ -271,6 +271,8 @@ Mathematics/NNGridder.tcc
 Mathematics/NNLSMatrixSolver.h
 Mathematics/NumericTraits.h
 Mathematics/NumericTraits2.h
+Mathematics/RMSDStatistics.h
+Mathematics/RMSDStatistics.tcc
 Mathematics/RigidVector.h
 Mathematics/RigidVector.tcc
 Mathematics/SCSL.h
