@@ -256,6 +256,8 @@ Mathematics/HingesFencesStatistics.h
 Mathematics/HingesFencesStatistics.tcc
 Mathematics/HistAcc.h
 Mathematics/HistAcc.tcc
+Mathematics/IterativeRangeStatistics.h
+Mathematics/IterativeRangeStatistics.tcc
 Mathematics/Interpolate2D.h
 Mathematics/Interpolate2D2.tcc
 Mathematics/InterpolateArray1D.h
