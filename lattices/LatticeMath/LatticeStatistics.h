@@ -212,7 +212,7 @@ public:
         // fit to half center value
         AccumType cv;
         // Chauvenet zscore, RMSD f factor
-        Double zsf;
+        Double zs;
         // Chauvenet/RMSD max iterations
         Int mi;
     };

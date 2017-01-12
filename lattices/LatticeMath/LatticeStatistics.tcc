@@ -733,11 +733,11 @@ void LatticeStatistics<T>::configureChauvenet(
 ) {
     if (
         _algConf.algorithm != StatisticsData::CHAUVENETCRITERION
-        || ! near(zscore, _algConf.zsf)
+        || ! near(zscore, _algConf.zs)
         || maxIterations != _algConf.mi
     ) {
         _algConf.algorithm = StatisticsData::CHAUVENETCRITERION;
-        _algConf.zsf = zscore;
+        _algConf.zs = zscore;
         _algConf.mi = maxIterations;
         needStorageLattice_p = True;
     }
@@ -749,11 +749,11 @@ void LatticeStatistics<T>::configureRMSD(
 ) {
     if (
         _algConf.algorithm != StatisticsData::RMSD
-        || ! near(f, _algConf.zsf)
+        || ! near(f, _algConf.zs)
         || maxIterations != _algConf.mi
     ) {
         _algConf.algorithm = StatisticsData::RMSD;
-        _algConf.zsf = f;
+        _algConf.zs = f;
         _algConf.mi = maxIterations;
         needStorageLattice_p = True;
     }
@@ -1170,13 +1170,13 @@ LatticeStatistics<T>::_createStatsAlgorithm() const {
     }
     case StatisticsData::CHAUVENETCRITERION: {
         sa = new ChauvenetCriterionStatistics<AccumType, const T*, const Bool*>(
-            _algConf.zsf, _algConf.mi
+            _algConf.zs, _algConf.mi
         );
         return sa;
     }
     case StatisticsData::RMSD: {
         sa = new RMSDStatistics<AccumType, const T*, const Bool*>(
-            _algConf.zsf, _algConf.mi
+            _algConf.zs, _algConf.mi
         );
         return sa;
     }
