@@ -74,6 +74,7 @@
 #include <casacore/scimath/Mathematics/ChauvenetCriterionStatistics.h>
 #include <casacore/scimath/Mathematics/FitToHalfStatistics.h>
 #include <casacore/scimath/Mathematics/HingesFencesStatistics.h>
+#include <casacore/scimath/Mathematics/RMSDStatistics.h>
 
 namespace casacore { //# NAMESPACE CASACORE - BEGIN
 
@@ -732,11 +733,27 @@ void LatticeStatistics<T>::configureChauvenet(
 ) {
     if (
         _algConf.algorithm != StatisticsData::CHAUVENETCRITERION
-        || ! near(zscore, _algConf.zs)
+        || ! near(zscore, _algConf.zsf)
         || maxIterations != _algConf.mi
     ) {
         _algConf.algorithm = StatisticsData::CHAUVENETCRITERION;
-        _algConf.zs = zscore;
+        _algConf.zsf = zscore;
+        _algConf.mi = maxIterations;
+        needStorageLattice_p = True;
+    }
+}
+
+template <class T>
+void LatticeStatistics<T>::configureRMSD(
+    Double f, Int maxIterations
+) {
+    if (
+        _algConf.algorithm != StatisticsData::RMSD
+        || ! near(f, _algConf.zsf)
+        || maxIterations != _algConf.mi
+    ) {
+        _algConf.algorithm = StatisticsData::RMSD;
+        _algConf.zsf = f;
         _algConf.mi = maxIterations;
         needStorageLattice_p = True;
     }
@@ -1153,7 +1170,13 @@ LatticeStatistics<T>::_createStatsAlgorithm() const {
     }
     case StatisticsData::CHAUVENETCRITERION: {
         sa = new ChauvenetCriterionStatistics<AccumType, const T*, const Bool*>(
-            _algConf.zs, _algConf.mi
+            _algConf.zsf, _algConf.mi
+        );
+        return sa;
+    }
+    case StatisticsData::RMSD: {
+        sa = new RMSDStatistics<AccumType, const T*, const Bool*>(
+            _algConf.zsf, _algConf.mi
         );
         return sa;
     }

@@ -211,9 +211,9 @@ public:
         FitToHalfStatisticsData::USE_DATA ud;
         // fit to half center value
         AccumType cv;
-        // Chauvenet zscore
-        Double zs;
-        // Chauvenet max iterations
+        // Chauvenet zscore, RMSD f factor
+        Double zsf;
+        // Chauvenet/RMSD max iterations
         Int mi;
     };
 
@@ -393,7 +393,12 @@ public:
 
    // configure to use Chauvenet's criterion
    void configureChauvenet(
-           Double zscore=-1, Int maxIterations=-1
+       Double zscore=-1, Int maxIterations=-1
+   );
+
+   // configure to use RMSD algorithm
+   void configureRMSD(
+       Double f=3, Int maxIterations=-1
    );
 
    // get number of iterations associated with Chauvenet criterion algorithm
