@@ -27,7 +27,7 @@
 #ifndef SCIMATH_RMSDSTATISTICS_TCC
 #define SCIMATH_RMSDSTATISTICS_TCC
 
-#include <casacore/scimath/Mathematics/RMSDStatistics.h>
+#include <casacore/scimath/Mathematics/NSigmaStatistics.h>
 
 namespace casacore {
 

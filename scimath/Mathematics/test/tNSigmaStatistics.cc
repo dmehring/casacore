@@ -27,7 +27,7 @@
 
 #include <casacore/casa/iostream.h>
 #include <casacore/casa/Arrays.h>
-#include <casacore/scimath/Mathematics/RMSDStatistics.h>
+#include <casacore/scimath/Mathematics/NSigmaStatistics.h>
 #include <casacore/casa/Exceptions/Error.h>
 
 #include <vector>

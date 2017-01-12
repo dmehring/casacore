@@ -77,7 +77,7 @@ private:
 }
 
 #ifndef CASACORE_NO_AUTO_TEMPLATES
-#include <casacore/scimath/Mathematics/RMSDStatistics.tcc>
+#include <casacore/scimath/Mathematics/NSigmaStatistics.tcc>
 #endif //# CASACORE_NO_AUTO_TEMPLATES
 
 #endif

@@ -74,7 +74,7 @@
 #include <casacore/scimath/Mathematics/ChauvenetCriterionStatistics.h>
 #include <casacore/scimath/Mathematics/FitToHalfStatistics.h>
 #include <casacore/scimath/Mathematics/HingesFencesStatistics.h>
-#include <casacore/scimath/Mathematics/RMSDStatistics.h>
+#include <casacore/scimath/Mathematics/NSigmaStatistics.h>
 
 namespace casacore { //# NAMESPACE CASACORE - BEGIN
 
