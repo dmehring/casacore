@@ -77,7 +77,7 @@ int main() {
             // test exception is thrown if f is not positive
             Bool thrown = False;
             try {
-                RMSDStatistics<Double, Double*, Bool*> cs(0);
+                NSigmaStatistics<Double, Double*, Bool*> cs(0);
             }
             catch (const AipsError& x) {
                 thrown = True;
@@ -86,7 +86,7 @@ int main() {
         }
         {
             // f=10000, 0 iterations
-            RMSDStatistics<Double, Double*, Bool*> cs(10000, 0);
+            NSigmaStatistics<Double, Double*, Bool*> cs(10000, 0);
             cs.setData(data, 107);
             StatsData<Double> sd = cs.getStatistics();
             AlwaysAssert(sd.npts == 107, AipsError);
@@ -94,7 +94,7 @@ int main() {
         }
         {
             // f=3.5, 0 iterations
-            RMSDStatistics<Double, Double*, Bool*> cs(3.5, 0);
+            NSigmaStatistics<Double, Double*, Bool*> cs(3.5, 0);
             cs.setData(data, 107);
             StatsData<Double> sd = cs.getStatistics();
             AlwaysAssert(sd.npts == 106, AipsError);
@@ -102,7 +102,7 @@ int main() {
         }
         {
             // f=3.5, 1 iteration
-            RMSDStatistics<Double, Double*, Bool*> cs(3.5, 1);
+            NSigmaStatistics<Double, Double*, Bool*> cs(3.5, 1);
             cs.setData(data, 107);
             StatsData<Double> sd = cs.getStatistics();
             AlwaysAssert(sd.npts == 104, AipsError);
@@ -110,7 +110,7 @@ int main() {
         }
         {
             // f=3.5, iterate until converged
-            RMSDStatistics<Double, Double*, Bool*> cs(3.5, -1);
+            NSigmaStatistics<Double, Double*, Bool*> cs(3.5, -1);
             cs.setData(data, 107);
             StatsData<Double> sd = cs.getStatistics();
             AlwaysAssert(sd.npts == 102, AipsError);

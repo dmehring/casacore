@@ -744,15 +744,15 @@ void LatticeStatistics<T>::configureChauvenet(
 }
 
 template <class T>
-void LatticeStatistics<T>::configureRMSD(
+void LatticeStatistics<T>::configureNSigma(
     Double f, Int maxIterations
 ) {
     if (
-        _algConf.algorithm != StatisticsData::RMSD
+        _algConf.algorithm != StatisticsData::NSIGMA
         || ! near(f, _algConf.zs)
         || maxIterations != _algConf.mi
     ) {
-        _algConf.algorithm = StatisticsData::RMSD;
+        _algConf.algorithm = StatisticsData::NSIGMA;
         _algConf.zs = f;
         _algConf.mi = maxIterations;
         needStorageLattice_p = True;
@@ -1174,8 +1174,8 @@ LatticeStatistics<T>::_createStatsAlgorithm() const {
         );
         return sa;
     }
-    case StatisticsData::RMSD: {
-        sa = new RMSDStatistics<AccumType, const T*, const Bool*>(
+    case StatisticsData::NSIGMA: {
+        sa = new NSigmaStatistics<AccumType, const T*, const Bool*>(
             _algConf.zs, _algConf.mi
         );
         return sa;

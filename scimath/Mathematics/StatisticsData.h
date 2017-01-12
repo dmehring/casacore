@@ -51,7 +51,7 @@ public:
         CLASSICAL,
         FITTOHALF,
         HINGESFENCES,
-        RMSD
+        NSIGMA
     };
 
     enum STATS {

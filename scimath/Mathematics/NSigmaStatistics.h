@@ -24,8 +24,8 @@
 //#
 //# $Id: Array.h 21545 2015-01-22 19:36:35Z gervandiepen $
 
-#ifndef SCIMATH_RMSDSTATISTICS_H
-#define SCIMATH_RMSDSTATISTICS_H
+#ifndef SCIMATH_NSigmaSTATISTICS_H
+#define SCIMATH_NSigmaSTATISTICS_H
 
 #include <casacore/casa/aips.h>
 
@@ -33,13 +33,15 @@
 
 namespace casacore {
 
-// Class to calculate statistics using the "RMSD" algorithm. This method
-// iteratively calculates statistics by discarding outliers that have
-// values outside the range (mean +/- f*rms). f is a positive constant
-// specified by the user.
+// Class to calculate statistics using the "NSigma" or "NSigma" algorithm.
+// This method iteratively calculates statistics by discarding outliers that
+// have values outside the range (mean +/- f*sigma). f is a positive constant
+// specified by the user and sigma is the standard deviation of the set of
+// points that are left after the outliers found in the previous iteration have
+// been discarded.
 
 template <class AccumType, class DataIterator, class MaskIterator=const Bool*, class WeightsIterator=DataIterator>
-class RMSDStatistics
+class NSigmaStatistics
     : public IterativeRangeStatistics<CASA_STATP> {
 
 public:
@@ -50,18 +52,18 @@ public:
     // of iterations to carry out before exiting. A non-positive value means to perform
     // a maximum of some very large, unspecified number of iterations (see code for current
     // setting).
-    RMSDStatistics(Double f=3, Int maxIterations=0);
+    NSigmaStatistics(Double f=3, Int maxIterations=0);
 
-    virtual ~RMSDStatistics();
+    virtual ~NSigmaStatistics();
 
     // copy semantics
-    RMSDStatistics<CASA_STATP>& operator=(
-        const RMSDStatistics<CASA_STATP>& other
+    NSigmaStatistics<CASA_STATP>& operator=(
+        const NSigmaStatistics<CASA_STATP>& other
     );
 
     // get the algorithm that this object uses for computing stats
     virtual StatisticsData::ALGORITHM algorithm() const {
-        return StatisticsData::RMSD;
+        return StatisticsData::NSIGMA;
     };
 
 protected:

@@ -24,15 +24,15 @@
 //#
 //# $Id: Array.h 21545 2015-01-22 19:36:35Z gervandiepen $
 
-#ifndef SCIMATH_RMSDSTATISTICS_TCC
-#define SCIMATH_RMSDSTATISTICS_TCC
+#ifndef SCIMATH_NSigmaSTATISTICS_TCC
+#define SCIMATH_NSigmaSTATISTICS_TCC
 
 #include <casacore/scimath/Mathematics/NSigmaStatistics.h>
 
 namespace casacore {
 
 CASA_STATD
-RMSDStatistics<CASA_STATP>::RMSDStatistics(
+NSigmaStatistics<CASA_STATP>::NSigmaStatistics(
     Double f, Int maxIterations
 )
   : IterativeRangeStatistics<CASA_STATP>(maxIterations),
@@ -41,12 +41,12 @@ RMSDStatistics<CASA_STATP>::RMSDStatistics(
 }
 
 CASA_STATD
-RMSDStatistics<CASA_STATP>::~RMSDStatistics() {}
+NSigmaStatistics<CASA_STATP>::~NSigmaStatistics() {}
 
 CASA_STATD
-RMSDStatistics<CASA_STATP>&
-RMSDStatistics<CASA_STATP>::operator=(
-    const RMSDStatistics<CASA_STATP>& other
+NSigmaStatistics<CASA_STATP>&
+NSigmaStatistics<CASA_STATP>::operator=(
+    const NSigmaStatistics<CASA_STATP>& other
 ) {
     if (this == &other) {
         return *this;
@@ -57,11 +57,11 @@ RMSDStatistics<CASA_STATP>::operator=(
 }
 
 CASA_STATD
-CountedPtr<std::pair<AccumType, AccumType> > RMSDStatistics<CASA_STATP>::_setNewRange(
+CountedPtr<std::pair<AccumType, AccumType> > NSigmaStatistics<CASA_STATP>::_setNewRange(
     const StatsData<AccumType>& sd
 ) {
     return new std::pair<AccumType, AccumType>(
-        sd.mean - _f*sd.rms, sd.mean + _f*sd.rms
+        sd.mean - _f*sd.stddev, sd.mean + _f*sd.stddev
     );
 }
 

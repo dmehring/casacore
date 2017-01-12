@@ -396,8 +396,8 @@ public:
        Double zscore=-1, Int maxIterations=-1
    );
 
-   // configure to use RMSD algorithm
-   void configureRMSD(
+   // configure to use NSigma/RMSD algorithm
+   void configureNSigma(
        Double f=3, Int maxIterations=-1
    );
 
