@@ -257,7 +257,31 @@ void StatisticsDataset<CASA_STATP>::initIterators() {
 }
 
 CASA_STATD
-void StatisticsDataset<CASA_STATP>::initLoopVars(uInt64& chunkCount, Bool& chunkHasWeights) {
+void StatisticsDataset<CASA_STATP>::initLoopVars(
+    uInt64& chunkCount, uInt& chunkStride,
+    Bool& chunkHasRanges, DataRanges& chunkRanges, Bool& chunkIsIncludeRanges,
+    Bool& chunkHasMask, uInt& chunkMaskStride,
+    Bool& chunkHasWeights
+) {
+    DataIterator chunkData;
+    MaskIterator chunkMask;
+    WeightsIterator chunkWeights;
+    initLoopVars(
+        chunkData, chunkCount, chunkStride,
+        chunkHasRanges, chunkRanges, chunkIsIncludeRanges,
+        chunkHasMask, chunkMask, chunkMaskStride,
+        chunkHasWeights, chunkWeights
+    );
+}
+
+
+CASA_STATD
+void StatisticsDataset<CASA_STATP>::initLoopVars(
+    DataIterator& chunkData, uInt64& chunkCount, uInt& chunkStride,
+    Bool& chunkHasRanges, DataRanges& chunkRanges, Bool& chunkIsIncludeRanges,
+    Bool& chunkHasMask, MaskIterator& chunkMask, uInt& chunkMaskStride,
+    Bool& chunkHasWeights, WeightsIterator& chunkWeights
+) {
     if (_dataProvider) {
         _chunkData = _dataProvider->getData();
         _chunkCount = _dataProvider->getCount();
@@ -281,8 +305,8 @@ void StatisticsDataset<CASA_STATP>::initLoopVars(uInt64& chunkCount, Bool& chunk
         _chunkData = *_diter;
         _chunkCount = *_citer;
         _chunkStride = *_dsiter;
-        typename std::map<uInt, DataRanges>::const_iterator rangeI = _chunkRanges.find(_dataCount);
-        _chunkHasRanges = rangeI != _chunkRanges.end();
+        typename std::map<uInt, DataRanges>::const_iterator rangeI = _dataRanges.find(_dataCount);
+        _chunkHasRanges = rangeI != _dataRanges.end();
         if (_chunkHasRanges) {
             _chunkRanges = rangeI->second;
             _chunkIsIncludeRanges = _isIncludeRanges.find(_dataCount)->second;
@@ -298,8 +322,17 @@ void StatisticsDataset<CASA_STATP>::initLoopVars(uInt64& chunkCount, Bool& chunk
             _chunkWeights = _weights.find(_dataCount)->second;
         }
     }
+    chunkData = _chunkData;
     chunkCount = _chunkCount;
+    chunkStride = _chunkStride;
+    chunkHasRanges = _chunkHasRanges;
+    chunkRanges = _chunkRanges;
+    chunkIsIncludeRanges = _chunkIsIncludeRanges;
+    chunkHasMask = _chunkHasMask;
+    chunkMask = _chunkMask;
+    chunkMaskStride = _chunkMaskStride;
     chunkHasWeights = _chunkHasWeights;
+    chunkWeights = _chunkWeights;
 }
 
 CASA_STATD

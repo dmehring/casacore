@@ -724,6 +724,14 @@ private:
         Bool chunkIsIncludeRanges
     );
 
+    void _computeNpts(
+        uInt64& npts, DataIterator dataIter, MaskIterator maskIter,
+        WeightsIterator weightsIter, uInt64 dataCount, Bool chunkHasWeights,
+        Bool chunkHasMask, Bool chunkHasRanges, uInt chunkStride,
+        uInt chunkMaskStride, const DataRanges& chunkRanges,
+        Bool chunkIsIncludeRanges
+    );
+
     void _computeStats(
         StatsData<AccumType>& stats, uInt64& ngood, LocationType& location,
         DataIterator dataIter, MaskIterator maskIter,
@@ -766,7 +774,7 @@ private:
     Int64 _doNpts();
 
     // increment the relevant loop counters
-    Bool _increment(Bool includeIDataset);
+    // Bool _increment(Bool includeIDataset);
 
     /*
     // increment thread-based iterators

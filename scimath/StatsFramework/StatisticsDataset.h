@@ -157,6 +157,8 @@ public:
         return _weights;
     }
 
+    Int64 iDataset() const { return _idataset; }
+
     Bool increment(Bool includeIDataset);
 
     void incrementThreadIters(
@@ -166,7 +168,21 @@ public:
 
     void initIterators();
 
-    void initLoopVars(uInt64& chunkCount, Bool& chunkHasWeights);
+    // used for threaded methods
+    void initLoopVars(
+        uInt64& chunkCount, uInt& chunkStride,
+        Bool& chunkHasRanges, DataRanges& chunkRanges, Bool& chunkIsIncludeRanges,
+        Bool& chunkHasMask, uInt& chunkMaskStride,
+        Bool& chunkHasWeights
+    );
+
+    // used for unthreaded methods
+    void initLoopVars(
+        DataIterator& chunkData, uInt64& chunkCount, uInt& chunkStride,
+        Bool& chunkHasRanges, DataRanges& chunkRanges, Bool& chunkIsIncludeRanges,
+        Bool& chunkHasMask, MaskIterator& chunkMask, uInt& chunkMaskStride,
+        Bool& chunkHasWeights, WeightsIterator& chunkWeights
+    );
 
     void initThreadVars(
         uInt& nBlocks, uInt64& extra, uInt& nthreads, PtrHolder<DataIterator>& dataIter,
@@ -175,6 +191,8 @@ public:
     ) const;
 
     void reset();
+
+    void resetIDataset() { _idataset = 0; }
 
     // <group>
     // setdata() clears any current datasets or data provider and then adds the specified data set as
