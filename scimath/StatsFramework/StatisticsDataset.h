@@ -28,7 +28,11 @@
 
 #include <casa/aips.h>
 
+#include <casacore/scimath/StatsFramework/StatisticsTypes.h>
+
 namespace casacore {
+
+template <class T> class PtrHolder;
 
 // Representation of a statistics dataset used in statistics framework calculatations.
 //
@@ -153,6 +157,23 @@ public:
         return _weights;
     }
 
+    Bool increment(Bool includeIDataset);
+
+    void incrementThreadIters(
+        DataIterator& dataIter, MaskIterator& maskIter,
+        WeightsIterator& weightsIter, uInt64& offset, uInt nthreads
+    ) const;
+
+    void initIterators();
+
+    void initLoopVars(uInt64& chunkCount, Bool& chunkHasWeights);
+
+    void initThreadVars(
+        uInt& nBlocks, uInt64& extra, uInt& nthreads, PtrHolder<DataIterator>& dataIter,
+        PtrHolder<MaskIterator>& maskIter, PtrHolder<WeightsIterator>& weightsIter,
+        PtrHolder<uInt64>& offset, uInt nThreadsMax
+    ) const;
+
     void reset();
 
     // <group>
@@ -225,6 +246,18 @@ private:
     std::map<uInt, Bool> _isIncludeRanges;
     std::map<uInt, DataRanges> _dataRanges;
     StatsDataProvider<CASA_STATP> *_dataProvider;
+
+    Int64 _idataset;
+    mutable typename std::vector<DataIterator>::const_iterator _dend, _diter;
+    mutable std::vector<Int64>::const_iterator _citer;
+    mutable std::vector<uInt>::const_iterator _dsiter;
+    mutable uInt _dataCount, _chunkStride, _chunkMaskStride;
+    mutable uInt64 _chunkCount;
+    mutable Bool _chunkHasMask, _chunkHasRanges, _chunkHasWeights, _chunkIsIncludeRanges;
+    mutable MaskIterator _chunkMask;
+    mutable DataIterator _chunkData;
+    mutable WeightsIterator _chunkWeights;
+    mutable DataRanges _chunkRanges;
 
     void _throwIfDataProviderDefined() const;
 };

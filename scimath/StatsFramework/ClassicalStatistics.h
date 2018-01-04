@@ -348,7 +348,7 @@ protected:
 
     Bool _getDoMaxMin() const { return _doMaxMin; }
 
-    Int64 _getIDataset() const { return _idataset; }
+    // Int64 _getIDataset() const { return _idataset; }
 
     virtual StatsData<AccumType> _getInitialStats() const;
     
@@ -356,7 +356,7 @@ protected:
 
     virtual StatsData<AccumType> _getStatistics();
 
-    // retreive stats structure. Allows derived classes to maintain their own
+    // Retrieve stats structure. Allows derived classes to maintain their own
     // StatsData structs.
     inline virtual StatsData<AccumType>& _getStatsData() { return _statsData; }
 
@@ -653,25 +653,25 @@ protected:
 
 private:
     StatsData<AccumType> _statsData;
-    Int64 _idataset;
+    // Int64 _idataset;
     Bool _calculateAsAdded, _doMaxMin, _doMedAbsDevMed, _mustAccumulate;
 
     // mutables, used to mitigate repeated code
-    mutable typename std::vector<DataIterator>::const_iterator _dend, _diter;
-    mutable std::vector<Int64>::const_iterator _citer;
-    mutable std::vector<uInt>::const_iterator _dsiter;
+    // mutable typename std::vector<DataIterator>::const_iterator _dend, _diter;
+    // mutable std::vector<Int64>::const_iterator _citer;
+    // mutable std::vector<uInt>::const_iterator _dsiter;
     mutable std::map<uInt, MaskIterator> _masks;
-    mutable uInt _maskStride;
+    // mutable uInt _maskStride;
     mutable std::map<uInt, WeightsIterator> _weights;
-    mutable std::map<uInt, DataRanges> _ranges;
+    // mutable std::map<uInt, DataRanges> _ranges;
     mutable std::map<uInt, Bool> _isIncludeRanges;
-    mutable Bool _hasMask, _hasRanges, _hasWeights, _myIsInclude;
-    mutable DataRanges _myRanges;
-    mutable MaskIterator _myMask;
-    mutable DataIterator _myData;
-    mutable WeightsIterator _myWeights;
-    mutable uInt _dataCount, _myStride;
-    mutable uInt64 _myCount;
+    // mutable Bool _hasMask, _hasRanges, _hasWeights, _myIsInclude;
+    // mutable DataRanges _myRanges;
+    // mutable MaskIterator _myMask;
+    //  mutable DataIterator _myData;
+    // mutable WeightsIterator _myWeights;
+    // mutable uInt /*_dataCount,*/ _myStride;
+    // mutable uInt64 _myCount;
 
     // tally the number of data points that fall into each bin provided by <src>binDesc</src>
     // Any points that are less than binDesc.minLimit or greater than
@@ -689,13 +689,19 @@ private:
         std::vector<Bool>& allSame, DataIterator dataIter, MaskIterator maskIter,
         WeightsIterator weightsIter, uInt64 count,
         const std::vector<typename StatisticsUtilities<AccumType>::BinDesc>& binDesc,
-        const std::vector<AccumType>& maxLimit
+        const std::vector<AccumType>& maxLimit, Bool chunkHasWeights,
+        Bool chunkHasMask, Bool chunkHasRanges, uInt chunkStride,
+        uInt chunkMaskStride, const DataRanges& chunkRanges,
+        Bool chunkIsIncludeRanges
     );
 
     void _computeDataArray(
         std::vector<AccumType>& ary, DataIterator dataIter,
         MaskIterator maskIter, WeightsIterator weightsIter,
-        uInt64 dataCount
+        uInt64 dataCount, Bool chunkHasWeights,
+        Bool chunkHasMask, Bool chunkHasRanges, uInt chunkStride,
+        uInt chunkMaskStride, const DataRanges& chunkRanges,
+        Bool chunkIsIncludeRanges
     );
 
     void _computeDataArrays(
@@ -703,19 +709,28 @@ private:
         DataIterator dataIter, MaskIterator maskIter,
         WeightsIterator weightsIter, uInt64 dataCount,
         const std::vector<std::pair<AccumType, AccumType> >& includeLimits,
-        uInt64 maxCount
+        uInt64 maxCount, Bool chunkHasWeights,
+        Bool chunkHasMask, Bool chunkHasRanges, uInt chunkStride,
+        uInt chunkMaskStride, const DataRanges& chunkRanges,
+        Bool chunkIsIncludeRanges
     );
 
     void _computeMinMax(
         CountedPtr<AccumType>& mymax, CountedPtr<AccumType>& mymin,
         DataIterator dataIter, MaskIterator maskIter,
-        WeightsIterator weightsIter, uInt64 dataCount
+        WeightsIterator weightsIter, uInt64 dataCount, Bool chunkHasWeights,
+        Bool chunkHasMask, Bool chunkHasRanges, uInt chunkStride,
+        uInt chunkMaskStride, const DataRanges& chunkRanges,
+        Bool chunkIsIncludeRanges
     );
 
     void _computeStats(
         StatsData<AccumType>& stats, uInt64& ngood, LocationType& location,
         DataIterator dataIter, MaskIterator maskIter,
-        WeightsIterator weightsIter, uInt64 count
+        WeightsIterator weightsIter, uInt64 count, Bool chunkHasWeights,
+        Bool chunkHasMask, Bool chunkHasRanges, uInt chunkStride,
+        uInt chunkMaskStride, const DataRanges& chunkRanges,
+        Bool chunkIsIncludeRanges
     );
 
     // Create an unsorted array of the complete data set. If <src>includeLimits</src> is specified,
@@ -753,12 +768,13 @@ private:
     // increment the relevant loop counters
     Bool _increment(Bool includeIDataset);
 
+    /*
     // increment thread-based iterators
     void _incrementThreadIters(
         DataIterator& dataIter, MaskIterator& maskIter,
         WeightsIterator& weightsIter, uInt64& offset, uInt nthreads
     ) const;
-
+*/
     // get the values for the specified indices in the sorted array of all good data
     std::map<uInt64, AccumType> _indicesToValues(
         CountedPtr<uInt64> knownNpts, CountedPtr<AccumType> knownMin,
@@ -767,15 +783,17 @@ private:
         uInt64 nBins
     );
     
-    void _initIterators();
+    // void _initIterators();
 
-    void _initLoopVars();
+    // void _initLoopVars();
 
+    /*
     void _initThreadVars(
         uInt& nBlocks, uInt64& extra, uInt& nthreads, PtrHolder<DataIterator>& dataIter,
         PtrHolder<MaskIterator>& maskIter, PtrHolder<WeightsIterator>& weightsIter,
         PtrHolder<uInt64>& offset, uInt nThreadsMax
     ) const;
+    */
 
     // Determine by scanning the dataset if the number of good points is smaller than
     // <src>maxArraySize</src>. If so, <src>arrayToSort</src> will contain the unsorted
