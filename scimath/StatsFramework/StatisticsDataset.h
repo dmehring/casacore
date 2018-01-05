@@ -53,6 +53,27 @@ class StatisticsDataset {
 
 public:
 
+    // holds information about a data chunk. A data chunk is either an individual
+    // underlying dataset (if no data provider), or a chunk of data served by
+    // the data provider if it exists.
+    struct ChunkData {
+        // start of data
+        DataIterator data;
+        // total number of points
+        uInt64 count;
+        // data stride
+        uInt dataStride;
+        // associated ranges. If NULL there are none.
+        // If not, the second member of the pair indicates
+        // if they are include ranges.
+        PtrHolder<std::pair<DataRanges, Bool> > ranges;
+        // associated mask. If NULL, there is no mask.
+        // If there is a mask, the second member is the mask stride.
+        PtrHolder<std::pair<MaskIterator, uInt> > mask;
+        // associated weights. If NULL there are no weights.
+        PtrHolder<WeightsIterator> weights;
+    };
+
     StatisticsDataset();
 
     StatisticsDataset(const StatisticsDataset& other);
@@ -131,9 +152,8 @@ public:
     // returns ! dataProvider && _data.empty()
     Bool empty() const;
 
+    // get data counts associated with the underlying data sets
     const std::vector<Int64>& getCounts() const { return _counts; }
-
-    const std::vector<DataIterator>& getData() const { return _data; }
 
     StatsDataProvider<CASA_STATP>* getDataProvider() {
         return _dataProvider;
@@ -141,20 +161,6 @@ public:
 
     const StatsDataProvider<CASA_STATP>* getDataProvider() const {
         return _dataProvider;
-    }
-
-    const std::vector<uInt>& getDataStrides() const { return _dataStrides; }
-
-    const std::map<uInt, Bool>& getIsIncludeRanges() const { return _isIncludeRanges; }
-
-    const std::map<uInt, MaskIterator> getMasks() const { return _masks; }
-
-    const std::map<uInt, uInt>& getMaskStrides() const { return _maskStrides; }
-
-    const std::map<uInt, DataRanges>& getRanges() const { return _dataRanges; }
-
-    const std::map<uInt, WeightsIterator>& getWeights() const {
-        return _weights;
     }
 
     Int64 iDataset() const { return _idataset; }
@@ -183,6 +189,8 @@ public:
         Bool& chunkHasMask, MaskIterator& chunkMask, uInt& chunkMaskStride,
         Bool& chunkHasWeights, WeightsIterator& chunkWeights
     );
+
+    const ChunkData& initLoopVars();
 
     void initThreadVars(
         uInt& nBlocks, uInt64& extra, uInt& nthreads, PtrHolder<DataIterator>& dataIter,
@@ -247,14 +255,16 @@ public:
     );
     // </group>
 
-    // instead of settng and adding data "by hand", set the data provider that will provide
+    // instead of setting and adding data "by hand", set the data provider that will provide
     // all the data sets. Calling this method will clear any other data sets that have
     // previously been set or added.
     void setDataProvider(StatsDataProvider<CASA_STATP> *dataProvider);
 
 private:
     std::vector<DataIterator> _data;
-    // maps data to weights
+    // maps data to weights.
+    // maps are used rather than vectors because only some (or none) of the data
+    // sets in the _data vector may have associated weights, masks, and/or ranges.
     std::map<uInt, WeightsIterator> _weights;
     // maps data to masks
     std::map<uInt, MaskIterator> _masks;
@@ -266,16 +276,11 @@ private:
     StatsDataProvider<CASA_STATP> *_dataProvider;
 
     Int64 _idataset;
-    mutable typename std::vector<DataIterator>::const_iterator _dend, _diter;
-    mutable std::vector<Int64>::const_iterator _citer;
-    mutable std::vector<uInt>::const_iterator _dsiter;
-    mutable uInt _dataCount, _chunkStride, _chunkMaskStride;
-    mutable uInt64 _chunkCount;
-    mutable Bool _chunkHasMask, _chunkHasRanges, _chunkHasWeights, _chunkIsIncludeRanges;
-    mutable MaskIterator _chunkMask;
-    mutable DataIterator _chunkData;
-    mutable WeightsIterator _chunkWeights;
-    mutable DataRanges _chunkRanges;
+    typename std::vector<DataIterator>::const_iterator _dend, _diter;
+    std::vector<Int64>::const_iterator _citer;
+    std::vector<uInt>::const_iterator _dsiter;
+    uInt _dataCount;
+    ChunkData _chunk;
 
     void _throwIfDataProviderDefined() const;
 };
