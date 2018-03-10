@@ -136,6 +136,10 @@ public:
   // Get the extension index for any extension specification given in the full name
   static uInt get_hdunum(const String &fullname);
 
+    static String className() {
+        return "FITSImage";
+    }
+
   //# ImageInterface virtual functions
   
   // Make a copy of the object with new (reference semantics).

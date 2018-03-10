@@ -71,8 +71,10 @@ void LatticeApply<T,U>::lineMultiApply (PtrBlock<MaskedLattice<U>*>& latticeOut,
 				      uInt collapseAxis,
 				      LatticeProgress* tellProgress)
 {
+    cout << __FILE__ << " " << __LINE__ << endl;
     lineMultiApply (latticeOut, SubLattice<T>(latticeIn, region),
 		    collapser, collapseAxis, tellProgress);
+    cout << __FILE__ << " " << __LINE__ << endl;
 }
 
 template <class T, class U>
@@ -224,6 +226,7 @@ void LatticeApply<T,U>::lineMultiApply (PtrBlock<MaskedLattice<U>*>& latticeOut,
 				      uInt collapseAxis,
 				      LatticeProgress* tellProgress)
 {
+    cout << __FILE__ << " " << __LINE__ << endl;
 // First verify that all the output lattices have the same shape and tile shape
 
     uInt i;
@@ -231,6 +234,7 @@ void LatticeApply<T,U>::lineMultiApply (PtrBlock<MaskedLattice<U>*>& latticeOut,
     AlwaysAssert(nOut > 0, AipsError);
     const IPosition shape(latticeOut[0]->shape());
     const uInt outDim = shape.nelements();
+    cout << __FILE__ << " " << __LINE__ << endl;
     for (i=1; i<nOut; ++i) {
 	AlwaysAssert(latticeOut[i]->shape() == shape, AipsError);
     }
@@ -248,6 +252,7 @@ void LatticeApply<T,U>::lineMultiApply (PtrBlock<MaskedLattice<U>*>& latticeOut,
     if (!useMask) {
 	useMask =  (! collapser.canHandleNullMask());
     }
+    cout << __FILE__ << " " << __LINE__ << endl;
 
 // Input lines are extracted with the TiledLineStepper.
 
@@ -256,6 +261,7 @@ void LatticeApply<T,U>::lineMultiApply (PtrBlock<MaskedLattice<U>*>& latticeOut,
     TiledLineStepper inNav(inShape, inTileShape, collapseAxis);
     RO_LatticeIterator<T> inIter(latticeIn, inNav);
 
+    cout << __FILE__ << " " << __LINE__ << endl;
     const IPosition blc = IPosition(inShape.nelements(), 0);
     const IPosition trc = inShape - 1;
     const IPosition inc = IPosition(inShape.nelements(), 1);
@@ -267,6 +273,7 @@ void LatticeApply<T,U>::lineMultiApply (PtrBlock<MaskedLattice<U>*>& latticeOut,
 	    outShape(i) = len(ioMap(i));
 	}
     }
+    cout << __FILE__ << " " << __LINE__ << endl;
 
 // Set the number of expected steps.
 // This is the number of lines to process.
@@ -277,12 +284,14 @@ void LatticeApply<T,U>::lineMultiApply (PtrBlock<MaskedLattice<U>*>& latticeOut,
     Int nResult = shape.product() / nLine;
     AlwaysAssert (nResult==1, AipsError);
     collapser.init (nResult);
+    cout << __FILE__ << " " << __LINE__ << endl;
     if (tellProgress != 0) tellProgress->init (nLine);
+    cout << __FILE__ << " " << __LINE__ << endl;
 
 // Iterate through all the lines.
 // Per tile the lines (in the collapseAxis) direction are
 // assembled into a single array, which is put thereafter.
-
+    uInt count = 0;
     while (!inIter.atEnd()) {
 
 // Calculate output buffer shape. Has to be done inside the loop
@@ -356,8 +365,12 @@ void LatticeApply<T,U>::lineMultiApply (PtrBlock<MaskedLattice<U>*>& latticeOut,
 		}
 	    }
 	}
+    ++count;
     }
+    cout << "count " << count << endl;
+    cout << __FILE__ << " " << __LINE__ << endl;
     if (tellProgress != 0) tellProgress->done();
+    cout << __FILE__ << " " << __LINE__ << endl;
 }
 
 
