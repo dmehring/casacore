@@ -2043,6 +2043,22 @@ vector<uInt> MSMetaData::getBBCNos() const {
     return out;
 }
 
+vector<Int> MSMetaData::getSNBs() const {
+    ThrowIf(
+        ! this->hasSdmNumBin(),
+        "This MS's SPECTRAL_WINDOW table does not have a SDM_NUM_BIN column"
+    );
+    std::set<uInt> avgSpw, tdmSpw, fdmSpw, wvrSpw, sqldSpw;
+    const auto props = _getSpwInfo(
+        avgSpw, tdmSpw, fdmSpw, wvrSpw, sqldSpw
+    );
+    vector<Int> out;
+    for_each(props.cbegin(), props.cend(), [&out] (const SpwProperties& p) {
+        out.push_back(p.sdmnumbin);
+    });
+    return out;
+}
+
 std::map<uInt, std::set<uInt> > MSMetaData::getBBCNosToSpwMap(
     SQLDSwitch sqldSwitch
 ) {
@@ -2706,6 +2722,23 @@ std::set<Double> MSMetaData::getTimesForIntent(const String& intent) const {
 
 Bool MSMetaData::hasBBCNo() const {
     return _ms->spectralWindow().isColumn(MSSpectralWindowEnums::BBC_NO);
+}
+
+Bool MSMetaData::hasSdmNumBin() const {
+    ScalarColumn<Int> col;
+    return _hasSdmNumBin(col);
+}
+
+Bool MSMetaData::_hasSdmNumBin(ScalarColumn<Int>& col) const {
+    const static String sdmNumBin = "SDM_NUM_BIN";
+    try {
+        // NRAO-specific optional add on column
+        col = ScalarColumn<Int>(_ms->spectralWindow(), sdmNumBin);
+        return True;
+    }
+    catch (const AipsError& x) {
+        return False;
+    }
 }
 
 std::map<String, std::set<Double> > MSMetaData::_getIntentsToTimesMap() const {
@@ -4920,26 +4953,27 @@ vector<MSMetaData::SpwProperties>  MSMetaData::_getSpwInfo2(
     std::set<uInt>& wvrSpw, std::set<uInt>& sqldSpw
 ) const {
     static const Regex rxSqld("BB_[0-9]#SQLD");
-    ROMSSpWindowColumns spwCols(_ms->spectralWindow());
+    auto specWinTab = _ms->spectralWindow();
+    ROMSSpWindowColumns spwCols(specWinTab);
     Vector<Double> bws = spwCols.totalBandwidth().getColumn();
     ArrayQuantColumn<Double> cfCol(
-        _ms->spectralWindow(),
+        specWinTab,
         MSSpectralWindow::columnName(MSSpectralWindowEnums::CHAN_FREQ)
     );
     ArrayQuantColumn<Double> cwCol(
-        _ms->spectralWindow(),
+        specWinTab,
         MSSpectralWindow::columnName(MSSpectralWindowEnums::CHAN_WIDTH)
     );
     ScalarMeasColumn<MFrequency> reffreqs(
-        _ms->spectralWindow(),
+        specWinTab,
         MSSpectralWindow::columnName(MSSpectralWindowEnums::REF_FREQUENCY)
     );
     ArrayQuantColumn<Double> ebwCol(
-        _ms->spectralWindow(),
+        specWinTab,
         MSSpectralWindow::columnName(MSSpectralWindowEnums::EFFECTIVE_BW)
     );
     ArrayQuantColumn<Double> resCol(
-        _ms->spectralWindow(),
+        specWinTab,
         MSSpectralWindow::columnName(MSSpectralWindowEnums::RESOLUTION)
     );
     Vector<Int> nss  = spwCols.netSideband().getColumn();
@@ -4951,6 +4985,10 @@ vector<MSMetaData::SpwProperties>  MSMetaData::_getSpwInfo2(
     vector<SpwProperties> spwInfo(bws.size());
     const static Unit emptyUnit;
     const static Unit hz("Hz");
+    // NRAO specific optional add on column
+    ScalarColumn<Int> sdmNumBinCol;
+    auto hasSNB = this->_hasSdmNumBin(sdmNumBinCol);
+    Vector<Int> snbs = hasSNB ? sdmNumBinCol.getColumn() : Vector<Int>();
     uInt nrows = bws.size();
     for (uInt i=0; i<nrows; ++i) {
         spwInfo[i].bandwidth = bws[i];
@@ -5012,6 +5050,9 @@ vector<MSMetaData::SpwProperties>  MSMetaData::_getSpwInfo2(
         }
         else {
             tdmSpw.insert(i);
+        }
+        if (hasSNB) {
+            spwInfo[i].sdmnumbin = snbs[i];
         }
     }
     return spwInfo;

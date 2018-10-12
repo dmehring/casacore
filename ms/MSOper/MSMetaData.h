@@ -394,6 +394,8 @@ public:
 
     vector<uInt> getBBCNos() const;
 
+    vector<Int> getSNBs() const;
+
     std::map<uInt, std::set<uInt> > getBBCNosToSpwMap(SQLDSwitch sqldSwitch);
 
     vector<vector<Double> > getEdgeChans();
@@ -520,6 +522,9 @@ public:
     // get the time stamps associated with the specified intent
     std::set<Double> getTimesForIntent(const String& intent) const;
     Bool hasBBCNo() const;
+
+    // ad hoc optional column in SPECTRAL_WINDOW table added by NRAO.
+    Bool hasSdmNumBin() const;
 
     //std::map<Double, Double> getExposuresForTimes() const;
 
@@ -703,6 +708,10 @@ private:
         QVD effbw;
         // RESOLUTION
         QVD resolution;
+        // CAS-11949: NRAO has introduced an add-on column in the
+        // SPECTRAL_WINDOW table that stakeholders want reported in listobs
+        // output, so this provides support for that
+        Int sdmnumbin;
     };
 
     // represents non-primary key data for a SOURCE table row
@@ -842,6 +851,9 @@ private:
         Quantum<Vector<Double> >& v, TableProxy& table, const String& colname,
         Int beginRow, Int nrows
     );
+
+    // if returns True, the associated column will be set in <src>col</src>
+    Bool _hasSdmNumBin(ScalarColumn<Int>& col) const;
 
     void _mergeScanProps(
         std::shared_ptr<std::map<ScanKey, MSMetaData::ScanProperties> >& scanProps,

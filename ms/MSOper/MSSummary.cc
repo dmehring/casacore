@@ -1503,6 +1503,7 @@ void MSSummary::listSpectralAndPolInfo (
         Int widthCorrTypes = 4*corrTypes[0].size();
         Int widthCorrType    =  4;
         uInt widthBBCNo = 8;
+        const uInt widthSNB = 12;
 
         // Write the column headers
         os.output().setf(ios::left, ios::adjustfield);
@@ -1523,6 +1524,11 @@ void MSSummary::listSpectralAndPolInfo (
             os << "BBC Num ";
         }
         os.output().width(widthCorrTypes);  os << " Corrs";
+        auto hasSNB = _msmd->hasSdmNumBin();
+        if (hasSNB) {
+            os.output().width(widthSNB);
+            os << "SDM_NUM_BIN ";
+        }
         os << endl;
 
         vector<uInt> nChans = _msmd->nChans();
@@ -1531,6 +1537,7 @@ void MSSummary::listSpectralAndPolInfo (
         vector<Quantity> centerFreqs = _msmd->getCenterFreqs();
         vector<Double> bandwidths = _msmd->getBandWidths();
         vector<uInt> bbcNo = hasBBCNo ? _msmd->getBBCNos() : vector<uInt>();
+        vector<Int> snb = hasSNB ? _msmd->getSNBs() : vector<Int>();
 
         os.output().precision(9);
         // order by spwid, not ddid, CAS-7376
@@ -1596,6 +1603,10 @@ void MSSummary::listSpectralAndPolInfo (
                 for (; cIter!=cEnd; ++cIter) {
                     os.output().width(widthCorrType);
                     os << Stokes::name(Stokes::type(*cIter));
+                }
+                if (hasSNB) {
+                    os.output().width(widthSNB);
+                    os << snb[spw];
                 }
             }
             // CAS-9072 avoid printing blank lines if there are
