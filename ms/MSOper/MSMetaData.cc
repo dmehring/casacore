@@ -4743,9 +4743,8 @@ vector<uInt> MSMetaData::getDataDescIDToPolIDMap() const {
 }
 
 vector<MSMetaData::SpwProperties> MSMetaData::_getSpwInfo(
-    std::set<uInt>& avgSpw, std::set<uInt>& tdmSpw,
-    std::set<uInt>& fdmSpw, std::set<uInt>& wvrSpw,
-    std::set<uInt>& sqldSpw
+    std::set<uInt>& avgSpw, std::set<uInt>& tdmSpw, std::set<uInt>& fdmSpw,
+    std::set<uInt>& wvrSpw, std::set<uInt>& sqldSpw
 ) const {
     if (_spwInfoStored) {
         avgSpw = _avgSpw;
@@ -4755,22 +4754,17 @@ vector<MSMetaData::SpwProperties> MSMetaData::_getSpwInfo(
         sqldSpw = _sqldSpw;
         return _spwInfo;
     }
-    vector<SpwProperties> spwInfo = _getSpwInfo2(
-        avgSpw, tdmSpw, fdmSpw, wvrSpw, sqldSpw
-    );
+    const auto spwInfo = _getSpwInfo2(avgSpw, tdmSpw, fdmSpw, wvrSpw, sqldSpw);
     uInt mysize = sizeof(uInt)*(
             avgSpw.size() + tdmSpw.size() + fdmSpw.size()
             + wvrSpw.size() + sqldSpw.size()
-        ) + 2*sizeof(Int)*spwInfo.size()
-        + 2*sizeof(Double)*spwInfo.size();
-    vector<SpwProperties>::const_iterator end = spwInfo.end();
-    for (
-        vector<SpwProperties>::const_iterator iter=spwInfo.begin();
-        iter!=end; ++iter
-    ) {
-        mysize += 4*(sizeof(Double)*iter->nchans + 20);
-        mysize += sizeof(Double)*iter->edgechans.size();
-    }
+        ) + 2*sizeof(Int)*spwInfo.size() + 2*sizeof(Double)*spwInfo.size();
+    for_each(
+        spwInfo.cbegin(), spwInfo.cend(), [&mysize]
+        (const SpwProperties& info) {
+            mysize += 4*(sizeof(Double)*info.nchans + 20);
+            mysize += sizeof(Double)*info.edgechans.size();
+    });
     if (_cacheUpdated(mysize)) {
         _avgSpw = avgSpw;
         _tdmSpw = tdmSpw;
@@ -4785,69 +4779,59 @@ vector<MSMetaData::SpwProperties> MSMetaData::_getSpwInfo(
 
 void MSMetaData::_checkField(uInt fieldID) const {
     ThrowIf(
-        fieldID >= nFields(),
-        "Unknown fieldID " + String::toString(fieldID)
+        fieldID >= nFields(), "Unknown fieldID " + String::toString(fieldID)
     );
 }
 
 void MSMetaData::_checkScan(const ScanKey& key) const {
-    std::set<ScanKey> allKeys = getScanKeys();
+    const auto allKeys = getScanKeys();
     ThrowIf(
-        allKeys.find(key) == allKeys.end(),
-        "Unknown scan " + toString(key)
+        allKeys.find(key) == allKeys.end(), "Unknown scan " + toString(key)
     );
 }
 
 void MSMetaData::_checkScans(const std::set<ScanKey>& scanKeys) const {
-    std::set<ScanKey> allKeys = getScanKeys();
-    std::set<ScanKey>::const_iterator iter = scanKeys.begin();
-    std::set<ScanKey>::const_iterator end = scanKeys.end();
-    while (iter != end) {
-        ThrowIf(
-            allKeys.find(*iter) == allKeys.end(),
-            "Unknown scan " + toString(*iter)
-        );
-        ++iter;
+    const auto allKeys = getScanKeys();
+    const auto end = allKeys.cend();
+    for (const auto& key : scanKeys) {
+        ThrowIf(allKeys.find(key) == end, "Unknown scan " + toString(key));
     }
 }
 
 void MSMetaData::_checkSubScan(const SubScanKey& key) const {
-    std::set<SubScanKey> allKeys = _getSubScanKeys();
+    const auto allKeys = _getSubScanKeys();
     ThrowIf(
-        allKeys.find(key) == allKeys.end(),
-        "Unknown subscan " + toString(key)
+        allKeys.find(key) == allKeys.cend(), "Unknown subscan " + toString(key)
     );
 }
 
-Bool MSMetaData::_hasFieldID(const Int fieldID) const {
+Bool MSMetaData::_hasFieldID(Int fieldID) const {
     ThrowIf (
         fieldID >= (Int)nFields(),
-        "Requested field ID "
-        + String::toString(fieldID)
+        "Requested field ID " + String::toString(fieldID)
         + " is greater than or equal to the number of records ("
-        + String::toString(nFields())
-        + ") in this MS's FIELD table"
+        + String::toString(nFields()) + ") in this MS's FIELD table"
     );
-    std::set<Int> uniqueFields = getUniqueFieldIDs();
-    return uniqueFields.find(fieldID) != uniqueFields.end();
+    const auto uniqueFields = getUniqueFieldIDs();
+    return uniqueFields.find(fieldID) != uniqueFields.cend();
 }
 
 const std::set<Int>& MSMetaData::getUniqueAntennaIDs() const {
     // this method is responsible for setting _uniqueAntennas
     if (_uniqueAntennaIDs.empty()) {
         if (_subScanProperties) {
-            map<SubScanKey, SubScanProperties>::const_iterator iter = _subScanProperties->begin();
-            map<SubScanKey, SubScanProperties>::const_iterator end = _subScanProperties->end();
-            for (; iter!=end; ++iter) {
-                const std::set<Int>& ants = iter->second.antennas;
-                _uniqueAntennaIDs.insert(ants.begin(), ants.end());
-            }
+            for_each(
+                _subScanProperties->cbegin(), _subScanProperties->cend(),
+                [this] (const std::pair<SubScanKey, SubScanProperties>& props) {
+                    const auto& ants = props.second.antennas;
+                    _uniqueAntennaIDs.insert(ants.cbegin(), ants.cend());
+            });
         }
         else {
-            std::shared_ptr<Vector<Int> > ant1, ant2;
+            std::shared_ptr<Vector<Int>> ant1, ant2;
             _getAntennas(ant1, ant2);
-            _uniqueAntennaIDs.insert(ant1->begin(), ant1->end());
-            _uniqueAntennaIDs.insert(ant2->begin(), ant2->end());
+            _uniqueAntennaIDs.insert(ant1->cbegin(), ant1->cend());
+            _uniqueAntennaIDs.insert(ant2->cbegin(), ant2->cend());
         }
     }    
     return _uniqueAntennaIDs;
@@ -4857,16 +4841,16 @@ std::set<uInt> MSMetaData::getUniqueDataDescIDs() const {
     // this method is responsible for setting _uniqueDataDescIDs
     if (_uniqueDataDescIDs.empty()) {
         if (_subScanProperties) {
-            map<SubScanKey, SubScanProperties>::const_iterator iter = _subScanProperties->begin();
-            map<SubScanKey, SubScanProperties>::const_iterator end = _subScanProperties->end();
-            for (; iter!=end; ++iter) {
-                const std::set<uInt>& ddIDs = iter->second.ddIDs; 
-                _uniqueDataDescIDs.insert(ddIDs.begin(), ddIDs.end());
-            }
+            for_each(
+                _subScanProperties->cbegin(), _subScanProperties->cend(),
+                [this] (const std::pair<SubScanKey, SubScanProperties>& props) {
+                    const auto& ddIDs = props.second.ddIDs;
+                    _uniqueDataDescIDs.insert(ddIDs.cbegin(), ddIDs.cend());
+            });
         }
         else {
-            std::shared_ptr<Vector<Int> > allDDIDs = _getDataDescIDs();
-            _uniqueDataDescIDs.insert(allDDIDs->begin(), allDDIDs->end());
+            const auto allDDIDs = _getDataDescIDs();
+            _uniqueDataDescIDs.insert(allDDIDs->cbegin(), allDDIDs->cend());
         }
     }
     return _uniqueDataDescIDs;
@@ -4875,29 +4859,27 @@ std::set<uInt> MSMetaData::getUniqueDataDescIDs() const {
 std::set<Int> MSMetaData::getUniqueFieldIDs() const {
     if (_uniqueFieldIDs.empty()) {
         if (_subScanProperties) {
-            map<SubScanKey, SubScanProperties>::const_iterator iter = _subScanProperties->begin();
-            map<SubScanKey, SubScanProperties>::const_iterator end = _subScanProperties->end();
-            for (; iter!=end; ++iter) {
-                _uniqueFieldIDs.insert(iter->first.fieldID);
-            }
+            for_each(
+                _subScanProperties->cbegin(), _subScanProperties->cend(),
+                [this] (const std::pair<SubScanKey, SubScanProperties>& props) {
+                    _uniqueFieldIDs.insert(props.first.fieldID);
+            });
         }
         else {
-            std::shared_ptr<Vector<Int> > allFieldIDs = _getFieldIDs();
-            _uniqueFieldIDs.insert(allFieldIDs->begin(), allFieldIDs->end());
+            const auto allFieldIDs = _getFieldIDs();
+            _uniqueFieldIDs.insert(allFieldIDs->cbegin(), allFieldIDs->cend());
         }
     }
     return _uniqueFieldIDs;
 }
 
 std::set<uInt> MSMetaData::getUniqueSpwIDs() const {
-    vector<uInt> ddToSpw = getDataDescIDToSpwMap();
-    std::set<uInt> uDDs = getUniqueDataDescIDs();
+    auto ddToSpw = getDataDescIDToSpwMap();
+    auto uDDs = getUniqueDataDescIDs();
     std::set<uInt> uSpws;
-    std::set<uInt>::const_iterator iter = uDDs.begin();
-    std::set<uInt>::const_iterator end = uDDs.end();
-    for (; iter!=end; ++iter) {
-        uSpws.insert(ddToSpw[*iter]);
-    }
+    for_each(uDDs.cbegin(), uDDs.cend(), [&uSpws, &ddToSpw] (uInt uDD) {
+        uSpws.insert(ddToSpw[uDD]);
+    });
     return uSpws;
 }
 
@@ -4905,15 +4887,13 @@ Bool MSMetaData::_hasStateID(const Int stateID) const {
     // This method is responsible for setting _uniqueStateIDs
     ThrowIf(
         stateID >= (Int)nStates(),
-        "Requested state ID "
-        + String::toString(stateID)
-        + " is greater than or equal to the number of records ("
-        + String::toString(nStates())
+        "Requested state ID " + String::toString(stateID) + " is greater than "
+        + "or equal to the number of records (" + String::toString(nStates())
         + ") in this MS's STATE table"
     );
     if (_uniqueStateIDs.empty()) {
-        std::shared_ptr<Vector<Int> > allStateIDs = _getStateIDs();
-        _uniqueStateIDs.insert(allStateIDs->begin(), allStateIDs->end());
+        auto allStateIDs = _getStateIDs();
+        _uniqueStateIDs.insert(allStateIDs->cbegin(), allStateIDs->cend());
     }
     return _uniqueStateIDs.find(stateID) != _uniqueStateIDs.end();
 }
@@ -4921,11 +4901,9 @@ Bool MSMetaData::_hasStateID(const Int stateID) const {
 void MSMetaData::_hasAntennaID(Int antennaID) {
     ThrowIf(
         antennaID >= (Int)nAntennas(),
-        _ORIGIN + "Requested antenna ID "
-        + String::toString(antennaID)
+        "Requested antenna ID " + String::toString(antennaID)
         + " is greater than or equal to the number of records ("
-        + String::toString(nAntennas())
-        + ") in this MS's ANTENNA table"
+        + String::toString(nAntennas()) + ") in this MS's ANTENNA table"
     );
 }
 
@@ -4933,13 +4911,11 @@ std::shared_ptr<Quantum<Vector<Double> > > MSMetaData::_getIntervals() const {
     ScalarQuantColumn<Double> col(
         *_ms, MeasurementSet::columnName(MSMainEnums::INTERVAL)
     );
-    std::shared_ptr<Quantum<Vector<Double> > > intervals = col.getColumn();
-    return intervals;
+    return col.getColumn();
 }
 
 MSMetaData::ColumnStats MSMetaData::getIntervalStatistics() const {
-    std::shared_ptr<Quantum<Vector<Double> > > intervals = _getIntervals();
-    Vector<Double> intInSec = intervals->getValue("s");
+    auto intInSec = _getIntervals()->getValue("s");
     ColumnStats stats;
     ClassicalStatistics<Double, Vector<Double>::const_iterator> cs;
     cs.setData(intInSec.begin(), intInSec.size());
@@ -4955,7 +4931,7 @@ vector<MSMetaData::SpwProperties>  MSMetaData::_getSpwInfo2(
     static const Regex rxSqld("BB_[0-9]#SQLD");
     auto specWinTab = _ms->spectralWindow();
     ROMSSpWindowColumns spwCols(specWinTab);
-    Vector<Double> bws = spwCols.totalBandwidth().getColumn();
+    auto bws = spwCols.totalBandwidth().getColumn();
     ArrayQuantColumn<Double> cfCol(
         specWinTab,
         MSSpectralWindow::columnName(MSSpectralWindowEnums::CHAN_FREQ)
@@ -4976,10 +4952,10 @@ vector<MSMetaData::SpwProperties>  MSMetaData::_getSpwInfo2(
         specWinTab,
         MSSpectralWindow::columnName(MSSpectralWindowEnums::RESOLUTION)
     );
-    Vector<Int> nss  = spwCols.netSideband().getColumn();
-    Vector<String> name = spwCols.name().getColumn();
-    Bool myHasBBCNo = hasBBCNo();
-    Vector<Int> bbcno = myHasBBCNo ? spwCols.bbcNo().getColumn() : Vector<Int>();
+    auto nss  = spwCols.netSideband().getColumn();
+    auto name = spwCols.name().getColumn();
+    auto myHasBBCNo = hasBBCNo();
+    auto bbcno = myHasBBCNo ? spwCols.bbcNo().getColumn() : Vector<Int>();
     vector<Double> freqLimits(2);
     Vector<Quantity> tmp;
     vector<SpwProperties> spwInfo(bws.size());
@@ -4988,14 +4964,14 @@ vector<MSMetaData::SpwProperties>  MSMetaData::_getSpwInfo2(
     // NRAO specific optional add on column
     ScalarColumn<Int> sdmNumBinCol;
     auto hasSNB = this->_hasSdmNumBin(sdmNumBinCol);
-    Vector<Int> snbs = hasSNB ? sdmNumBinCol.getColumn() : Vector<Int>();
-    uInt nrows = bws.size();
+    auto snbs = hasSNB ? sdmNumBinCol.getColumn() : Vector<Int>();
+    auto nrows = bws.size();
     for (uInt i=0; i<nrows; ++i) {
         spwInfo[i].bandwidth = bws[i];
         tmp.resize(0);
         cfCol.get(i, tmp);
         spwInfo[i].chanfreqs = QVD(tmp);
-        Unit u = spwInfo[i].chanfreqs.getFullUnit();
+        const auto& u = spwInfo[i].chanfreqs.getFullUnit();
         spwInfo[i].meanfreq = Quantity(
             mean(spwInfo[i].chanfreqs.getValue()), u
         );
@@ -5007,16 +4983,16 @@ vector<MSMetaData::SpwProperties>  MSMetaData::_getSpwInfo2(
         spwInfo[i].chanwidths = QVD(tmp);
         spwInfo[i].netsideband = nss[i];
         spwInfo[i].nchans = tmp.size();
-        uInt nchan = spwInfo[i].nchans;
+        auto nchan = spwInfo[i].nchans;
         tmp.resize(0);
         ebwCol.get(i, tmp);
         spwInfo[i].effbw = QVD(tmp);
         tmp.resize(0);
         resCol.get(i, tmp);
         spwInfo[i].resolution = QVD(tmp);
-        QVD halfWidths = (spwInfo[i].chanwidths)/2.0;
-        Quantity lowFreq = (spwInfo[i].chanfreqs - halfWidths).min();
-        Quantity highFreq = (spwInfo[i].chanfreqs + halfWidths).max();
+        auto halfWidths = (spwInfo[i].chanwidths)/2.0;
+        auto lowFreq = (spwInfo[i].chanfreqs - halfWidths).min();
+        auto highFreq = (spwInfo[i].chanfreqs + halfWidths).max();
         spwInfo[i].centerfreq = (lowFreq + highFreq)/2;
         spwInfo[i].name = name[i];
         if (myHasBBCNo) {
@@ -5060,12 +5036,14 @@ vector<MSMetaData::SpwProperties>  MSMetaData::_getSpwInfo2(
 
 std::map<Int, uInt> MSMetaData::_toUIntMap(const Vector<Int>& v) {
     ThrowIf(
-        anyLT(v, 0), "Column that should contain nonnegative ints has a negative int"
+        anyLT(v, 0),
+        "Column that should contain nonnegative ints has a negative int"
     );
     std::map<Int, uInt> m;
     Int count = 0;
-    for (Vector<Int>::const_iterator iter=v.begin(); iter!=v.end(); ++iter, ++count) {
-        m[count] = *iter;
+    for (const auto val: v) {
+        m[count] = val;
+        ++count;
     }
     return m;
 }
@@ -5073,39 +5051,36 @@ std::map<Int, uInt> MSMetaData::_toUIntMap(const Vector<Int>& v) {
 std::set<SubScanKey> MSMetaData::getSubScanKeys(
     const ArrayKey& arrayKey
 ) const {
-    std::map<ArrayKey, std::set<SubScanKey> > mymap = _getArrayKeysToSubScanKeys();
-    std::map<ArrayKey, std::set<SubScanKey> >::const_iterator iter = mymap.find(arrayKey);
-    ThrowIf(
-        iter == mymap.end(),
-        "MS does not contain requested ArrayKey"
-    );
+    const auto mymap = _getArrayKeysToSubScanKeys();
+    auto iter = mymap.find(arrayKey);
+    ThrowIf(iter == mymap.cend(), "MS does not contain requested ArrayKey");
     return iter->second;
 }
 
-std::map<ArrayKey, std::set<SubScanKey> > MSMetaData::_getArrayKeysToSubScanKeys() const {
+std::map<ArrayKey, std::set<SubScanKey>>
+MSMetaData::_getArrayKeysToSubScanKeys() const {
     // this method is responsible for setting _arrayToSubScans
     if (! _arrayToSubScans.empty()) {
         return _arrayToSubScans;
     }
     std::set<SubScanKey> subScans = _getSubScanKeys();
-    std::set<SubScanKey>::const_iterator iter = subScans.begin();
-    std::set<SubScanKey>::const_iterator end = subScans.end();
-    std::map<ArrayKey, std::set<SubScanKey> > mymap;
+    std::map<ArrayKey, std::set<SubScanKey>> mymap;
     ArrayKey akey;
-    for ( ; iter != end; ++iter) {
-        akey.arrayID = iter->arrayID;
-        akey.obsID = iter->obsID;
-        if (mymap.find(akey) == mymap.end()) {
-            mymap[akey] = std::set<SubScanKey>();
-        }
-        mymap[akey].insert(*iter);
-    }
+    for_each(
+        subScans.cbegin(), subScans.cend(),
+        [&akey, &mymap] (const SubScanKey& ssKey) {
+            akey.arrayID = ssKey.arrayID;
+            akey.obsID = ssKey.obsID;
+            if (mymap.find(akey) == mymap.end()) {
+                mymap[akey] = std::set<SubScanKey>();
+            }
+            mymap[akey].insert(ssKey);
+        });
     uInt mysize = 0;
-    std::map<ArrayKey, std::set<SubScanKey> >::const_iterator miter = mymap.begin();
-    std::map<ArrayKey, std::set<SubScanKey> >::const_iterator mend = mymap.end();
-    for ( ; miter != mend; ++miter) {
-        mysize += sizeof(SubScanKey)*miter->second.size();
+    for (const auto& mypair: mymap) {
+        mysize += mypair.second.size();
     }
+    mysize *= sizeof(SubScanKey);
     mysize += mymap.size() * sizeof(ArrayKey);
     if (_cacheUpdated(mysize)) {
         _arrayToSubScans = mymap;
